@@ -1,0 +1,70 @@
+#include <pit.h>
+#include <isr.h>
+#include <print.h>
+#include <task.h>
+
+UInt32 tick = 0;
+UInt32 seconds = 0;
+
+UInt32 mstime = 0;
+
+Bool interval_enable = false;
+char interval_c;
+UInt32 u_interval;
+
+UInt32 GetTicks() {
+	return tick;
+}
+
+UInt32 GetSeconds() {
+	return tick/(1000/mstime);
+}
+
+void wait(int ticks) {
+	UInt32 wait_ticks = tick+ticks;
+	while(tick<=wait_ticks) {}
+}
+
+extern void task_switch();
+
+static void timer_callback(Registers regs) {
+	tick++;
+	if(interval_enable && u_interval) {
+		if((tick%u_interval)==0) {
+			PutChar(interval_c);
+		}
+	}
+	
+	if(!(tick%25))
+		kprintf("t%d\n", tick);
+	
+	task_switch();
+}
+
+void EnableLoadIndicator(char c, UInt32 interval) {
+	interval_c = (c) ? c : interval_c;
+	u_interval = (interval) ? interval : u_interval;
+	interval_enable = true;
+}
+
+void DisableLoadIndicator() {
+	interval_enable = false;
+}
+
+void PIT_Init(UInt32 ms_time) {
+	registerIntHandler(IRQ0, &timer_callback);
+	
+	UInt32 freq = 1000/ms_time;
+	mstime = ms_time;
+	
+	UInt32 divisor = 1193180 / freq;
+	
+	outb(0x43, 0x36);
+	
+	UInt8 l = (UInt8)(divisor & 0xFF);
+	UInt8 h = (UInt8)(divisor>>8) & 0xFF;
+	
+	outb(0x40, l);
+	outb(0x40, h);
+	
+}

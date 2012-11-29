@@ -1,0 +1,87 @@
+#include <common/arraylist.h>
+#include <kheap.h>
+
+#define ARRAYLIST_DEFAULT_START_CAPACITY 8
+
+ArrayList* ALCreate() {
+	ArrayList* newList = kalloc(sizeof(ArrayList));
+	newList->length = 0;
+	newList->capacity = ARRAYLIST_DEFAULT_START_CAPACITY;
+	newList->allocatedListPtr = newList->listData = kalloc(newList->capacity*sizeof(void*));
+	newList->bits = Bitset_Create((newList->capacity/32==0) ? 1 : newList->capacity/32);
+	
+	return newList;
+}
+
+int ALAdd(ArrayList* list, void* value) {
+	if(list==NULL) {
+		kprintf("ALAdd error:  list==NULL.  ALAdd(%x, %x)\n", list, value);
+		return -1;
+	}
+	
+	if(list->length>=list->capacity) {
+		expand(list);
+	}
+	
+	int idx = Bitset_FirstWithValue(list->bits, 0);
+	if(idx==-1) {
+		((void**)list->listData)[list->length++] = value;
+	} else {
+		((void**)list->listData)[idx] = value;
+	}
+	
+	if(idx>=list->length) {
+		list->length = idx+1;
+	}
+	
+	Bitset_Set(list->bits, idx, 1);
+	return idx;
+}
+
+void ALRemove(ArrayList* list, int idx) {
+	void** listData = (void**) list->listData;
+	listData[idx] = 0;
+	Bitset* bits = list->bits;
+	Bitset_Set(bits, idx, 0);
+	
+	// If the removal is at the end, decrement list->length.
+	if(idx==list->length-1) {
+		--list->length;
+	}
+}
+
+void expand(ArrayList* list) {
+	int newCap = list->capacity*2;
+	void* newListData = kalloc(newCap*sizeof(void*));
+	memcpy(newListData, list->listData, list->length*sizeof(void*));
+	list->listData = newListData;
+	list->capacity = newCap;
+	
+	kfree((void*) list->allocatedListPtr);
+	
+	list->allocatedListPtr = newListData;
+	Bitset_Resize(list->bits, list->capacity);
+}
+
+void contract(ArrayList* list) {
+	int newCap = list->capacity/2;
+	if(newCap<list->length) {
+		return;
+	}
+	
+	void* newListData = kalloc(newCap*sizeof(void*));
+	memcpy(newListData, list->listData, list->length*sizeof(void*));
+	kfree(list->allocatedListPtr);
+	
+	list->allocatedListPtr = list->listData = newListData;
+	list->capacity = newCap;
+	Bitset_Resize(list->bits, list->capacity);
+}
+
+void* ALGetPtr(ArrayList* list, int idx) {
+	return (idx>list->length) ? 0 : ((void**) list->listData)[idx];
+}
+
+UInt32 ALGetInt(ArrayList* list, int idx) {
+	return (UInt32) ALGetPtr(list, idx);
+}

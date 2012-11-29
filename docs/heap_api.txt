@@ -1,0 +1,11 @@
+Heap InitialiseHeap(int size):  Initialises a heap at a variable location in memory.
+Heap InitialiseKernelHeap(Pointer heap, Pointer k_ordered_array, int size):  Initialises the kernel heap at *heap.
+
+Pointer HeapAlloc(Heap heap, int size, int page_align):  Returns a pointer to a block of size bytes, page aligned if page_align>0
+
+void HeapFree(Heap heap, Pointer p):  Frees a pointer.
+
+void HeapExtend(Heap heap, int sz):  Extends a heap by sz bytes.
+
+int HeapShrink(Heap heap):  Shrinks a heap by lopping of the unused bytes at the end.  Returns the amount of bytes the heap was shrunk by.
+

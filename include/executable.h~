@@ -1,0 +1,22 @@
+#ifndef EXECUTABLE_H
+#define EXECUTABLE_H
+
+#include <KOSTypes.h>
+
+#define EXE_MAGIC 0xFEEDEEF1
+
+typedef struct __process_info {
+	Pointer text_section;
+	UInt32 text_sz;
+	Pointer data_section;
+	UInt32 data_sz;
+	Pointer stack;
+	UInt32 stack_sz;
+	PageDirectory* pd; // Pointer to the executable's page directory.
+} ProcessInfo;
+// returns a pointer to a ProcessInfo struct.
+// Params.eh = A pointer to the complete executable in memory.
+ProcessInfo* Parse_ELF_Header(Pointer hdr);
+
+
+#endif

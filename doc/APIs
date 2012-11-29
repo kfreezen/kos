@@ -1,0 +1,71 @@
+kOS Future API's:
+	The goal of these is to provide simple and organized functions and structures to use to create applications
+	
+kOS Lowlevel CLI:
+	int CLI_Init();
+		Initializes the CLI API.
+		
+		Returns:
+			Returns 0 if no error occurred, or 1 if any error occured.
+
+	int PrintChar(Char c);
+		Prints the character to the console.
+		
+		Returns:
+			Returns 0 if no error occured, or 1 if any error occured.
+
+	int PrintString(String str);
+		Prints the string to the console.
+		
+		Returns:
+			Returns 0 if no error occured, 1 if any error occured, or 2 if the character was NULL.
+			
+	int Move(int x, int y);
+		Moves the software cursor to the specified location.
+		
+		Returns:
+			Returns 0 if no error occured, or 1 if any error occured.
+			
+	int MoveCursor(int x, int y);
+		Moves the hardware cursor to the specified location.
+		
+		Returns:
+			Returns 0 if the cursor was moved, 1 if any error occured.
+			
+	int MoveCursorToCurrentCoordinates();
+		Moves the hardware cursor to the current coordinates.
+		
+		Returns:
+			Returns 0 if the cursor was moved, 1 if any error occured.
+			
+	void ClearScreen();
+		Clears the screen.
+		
+		Returns:
+			Nothing.
+			
+	int GetError();
+		Gets the last error.
+		
+		Returns:
+			0 -- ERROR_NONE
+			1 -- ERROR_ALREADY_INITIALIZED
+			2 -- ERROR_INVALID_COORDINATES
+			3 -- ERROR_NOT_INITIALIZED
+			
+	void ClearError();
+		Clears the last error.
+		
+		Returns:
+			Nothing.
+			
+	void SetColorAttribute(Uint8 c);
+		Sets the color attribute.
+		
+System Calls:
+	eax=0x101: PutString():
+		ebx=String pointer.
+	eax=0x102: GetLine():
+		ebx=Pointer to buffer.
+		ecx=Maximum buffer length.
+		edx=terminating character.

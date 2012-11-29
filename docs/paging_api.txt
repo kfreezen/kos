@@ -1,0 +1,7 @@
+void PagingInit(int memkb):  Initialise paging with a 1:1 mapped kernel.
+Pointer AllocPage():  Allocate a new page and return the physical address.
+
+PageMap AllocPages(int nPages):  Allocates nPages pages and returns the physical addresses in a PageMap struct.  Optional, but useful if implemented.
+
+SwapPages(PageDir dir, Pointer virt_addr0, Pointer virt_addr1):  Switches two physical pages in a page directory between the two virtual addresses.
+

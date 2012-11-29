@@ -1,0 +1,13 @@
+#ifndef KEYBOARD_H
+#define KEYBOARD_H
+
+#include <KOSTypes.h>
+
+void KB_Init();
+
+typedef struct __kb_map {
+	char name[8];
+	Byte map[256];
+} KB_Map;
+
+#endif

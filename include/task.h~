@@ -1,0 +1,24 @@
+#ifndef TASK_H
+#define TASK_H
+
+#include <KOSTypes.h>
+#include <paging.h>
+
+#define STACK_ADDR 0xE0000000
+#define STACK_INITIAL_SIZE 0x4000
+
+typedef struct __task {
+	int id;
+	UInt32 eip, esp, ebp;
+	PageDirectory* dir;
+	struct __task* next;
+} Task;
+
+void init_tasking();
+void move_stack(Pointer new_stack_start, UInt32 size);
+
+int fork();
+
+int getpid();
+
+#endif

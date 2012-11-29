@@ -1,0 +1,1 @@
+int GetNumFloppyDrives():  Returns the number of floppy drives on the FDC.

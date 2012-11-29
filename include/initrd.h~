@@ -1,0 +1,9 @@
+#ifndef INITRD_H
+#define INITRD_H
+
+#include <KOSTypes.h>
+#include <vfs.h>
+
+fs_node_t* init_initrd(Pointer location);
+
+#endif

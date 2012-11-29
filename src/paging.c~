@@ -1,0 +1,477 @@
+#include <paging.h>
+#include <bitset.h>
+#include <isr.h>
+#include <pit.h>
+#include <kheap.h>
+
+#define PAGING_TRACE
+#define PAGING_CHECKPOINT
+
+#define BSOD_ATTR 0x1F
+extern int end;
+
+UInt32 end_of_kernel = (UInt32) &end;
+Bitset* bits;
+PageDirectory* krnl_dir;
+PageDirectory* krnl_clone_dir;
+PageDirectory* orig_krnl_dir; // The original dir is defined as the kernel directory before move_stack()
+
+PageDirectory* cur_dir;
+
+extern UInt32 placement_address;
+extern UInt32 initial_esp;
+
+void init_orig_dir() {
+	UInt32 phys;
+	orig_krnl_dir = kmalloc_ap(sizeof(PageDirectory), true, &phys);
+	
+	memcpy(orig_krnl_dir, krnl_dir, sizeof(PageDirectory));
+	orig_krnl_dir->phys = phys;
+}
+
+static void pf_handler(Registers regs) {
+	UInt32 cr2;
+	
+	asm volatile("mov %%cr2, %0" : "=r" (cr2));
+	
+	int err = regs.err_code;
+	
+	SetColorAttribute(BSOD_ATTR);
+	kprintf("PAGE_FAULT ");
+
+	if((err&1)==1) { PutString("PAGE_PROTECT_VIOLATION "); } 
+	else { PutString("NON_PRESENT_PAGE "); }
+	
+	if((err&2)==2) { PutString("WRITE "); }
+	else { PutString("READ "); }
+	
+	if((err&4)==4) { PutString("CPL_WAS_3_IN_A_CPL_0_PAGE "); }
+	else {}
+	
+	if((err&8)==8) { PutString("RESERVED_WRITE "); }
+	
+	if((err&16)==16) { PutString("INSTRUCTION_FETCH "); }
+	
+	kprintf("VIRT_ADDRESS=%x ESP=%x\nEIP=%x PADDR=%x\n", cr2, regs.esp, regs.eip, placement_address);
+	
+	UInt32* esp = (UInt32*) regs.esp-24;
+	int i;
+	
+	kprintf("DEBUG:  ebp=%x,eax=%x,ebx=%x,ecx=%x,edx=%x\n", regs.ebp, regs.eax, regs.ebx, regs.ecx, regs.edx);
+	
+	for(i=0; i<10; i++) {
+		kprintf("*(%x)=%x\n", esp, *esp);
+		esp--;
+	}
+	for(;;) {}
+}
+
+PageDirectoryEntry AssemblePDE(Pointer pt, UInt32 flags) {
+	PageDirectoryEntry pte = ((UInt32)pt&0xFFFFF000) | flags;
+	return pte;
+}
+
+PageTableEntry AssemblePTE(Pointer page, UInt32 flags) {
+	PageTableEntry pte = ((UInt32)page&0xFFFFF000) | flags;
+	return pte;
+}
+
+int alloc_frame() { // Returns the bit that was set.
+
+	int bit = GetFirstBitWithState(bits, off);
+	if(bit!=-1) SetBit(bits, bit);
+
+	return bit;
+}
+
+/*
+int alloc_contiguous_frames(int amount, int* amount_out) { // returns bit.  amount==amount reserved.
+	// TODO:  Finish implementing alloc_contiguous_frames
+
+	int bit = GetFirstBitWithState(bits, off);
+	int ibit = bit;
+	int i = 0;
+	
+	if((bit%32)!=0) {
+		while((ibit%32)!=0 && i<amount) {
+			int b = GetBit(bits, ibit);
+			if(b==off) {
+				SetBit(bits, ibit);
+				i++;
+			} else {
+				break;
+			}
+		}
+		
+		if((ibit%32)==0 && i<amount) {
+			int b = ibit/32;
+			while(i<amount) {
+				if(bits->bit_storage[b]!=0) {
+					// Get how many bits are available in the long.
+				}
+			}
+		}
+	}
+	
+	*amount_out = i;
+	return bit;
+}
+*/
+
+void free_frame(int bit) {
+	ClearBit(bits, bit);
+}
+
+PageTable* IdMapPageTable(int pt_frame) {
+	int i;
+	Pointer pt_base = (Pointer) (pt_frame*(4*(1024*1024)));
+	PageTable* pt = (PageTable*) kmalloc_ex(sizeof(PageTable), true, NULL, false);
+	
+	for(i=0; i<1024; i++) {
+		pt->t[i] = AssemblePTE((pt_base+(i*0x1000)), 0x07);
+	}
+	
+	return pt;
+}
+
+#define ONE_TO_ONE_MAP_MB 8
+
+void SwitchPageDirectory(PageDirectory* pd) {
+	asm volatile("cli");
+	cur_dir = pd;
+	asm volatile("mov %0, %%cr3":: "r"(pd->phys));
+	UInt32 cr0;
+	asm volatile("mov %%cr0, %0": "=r"(cr0));
+	cr0 |= 0x80000000; // Enable paging!
+	asm volatile("mov %0, %%cr0":: "r"(cr0));
+	asm volatile("sti");
+}
+
+extern void _invlpg(Pointer virt_addr);
+
+int alloc_page(PageDirectory* pd, Pointer virt_addr);
+
+int alloc_page(PageDirectory* pd, Pointer virt_addr) { // Allocates a page to a virtual address.  returns 0 if successful, 1 if not.
+	return alloc_page_ex(pd, virt_addr, true, true);
+}
+
+Pointer getVirtAddr(UInt32 pd_index, UInt32 pt_index) {
+	// 4MEGS*pd_index+(4KB*pt_index)
+	return (Pointer) ((4*1024*1024)*pd_index)+((4*1024)*pt_index);
+}
+
+int alloc_page_ex(PageDirectory* pd, Pointer virt_addr, Bool do_firstSwitchDir, Bool do_lastSwitchDir) {
+	virt_addr = (Pointer)((UInt32) virt_addr & 0xFFFFF000);
+	
+	if(pd == NULL) {
+		if(do_firstSwitchDir) {
+			SwitchPageDirectory(krnl_clone_dir);
+		}
+		pd = krnl_dir;
+	}
+	
+	UInt32 va = (UInt32) virt_addr;
+	
+	UInt32 raw_pt_idx = (UInt32)va >> 22;
+	UInt32 raw_page_idx= (UInt32)va >> 12 & 0x03FF;
+	
+	int i = alloc_frame();
+	Pointer phys_addr;
+	if(i==-1) {
+		return 1;
+	} else {
+		phys_addr = (Pointer) (i*0x1000);
+	}
+	
+	PageTable* pt;
+	UInt32 _phys=0;
+	
+	if(pd->d[raw_pt_idx]==0) { // Create a new page table.
+		pt = (PageTable*) kmalloc_ap(sizeof(PageTable), true, &_phys);
+		memset(pt, 0, sizeof(PageTable));
+		pd->d[raw_pt_idx] = AssemblePDE((Pointer) _phys, 0x7);
+		pd->kd[raw_pt_idx] = AssemblePDE((Pointer) pt, 0x7);
+		#ifdef PAGING_DEBUG
+		kprintf("_phys=%x, pt=%x, phys_addr=%x\n", _phys, pt->t, phys_addr);
+		#endif
+	} else {
+		// Get the page table for modification.
+		pt = (PageTable*) ((UInt32) pd->kd[raw_pt_idx] & 0xFFFFF000);
+	}
+	
+	pt->t[raw_page_idx] = (PageTableEntry) AssemblePTE(phys_addr, 0x7);
+
+	_invlpg(virt_addr);
+	
+	if(cur_dir == krnl_clone_dir) {
+		if(do_lastSwitchDir) {
+			SwitchPageDirectory(krnl_dir);
+			memcpy(krnl_clone_dir, krnl_dir, sizeof(PageDirectory));
+		}
+	}
+	
+	#ifdef IDEBUG
+	kprintf("%x %x %x %x\n", virt_addr, phys_addr, _phys, pt->t);
+	#endif
+	
+	return 0;
+}
+
+int alloc_pages(PageDirectory* pd, Pointer virt_addr_start, Pointer virt_addr_end) {
+	Pointer virt_addr = virt_addr_start;
+	SwitchPageDirectory(krnl_clone_dir);
+	
+	while(virt_addr<virt_addr_end) {
+		int status = alloc_page_ex(pd, virt_addr, false, false);
+		
+		#ifdef IDEBUG
+		if(((UInt32)(virt_addr-virt_addr_start)%((virt_addr_end-virt_addr_start)/4))==0) {
+			kprintf("debug-passed:  %x\n", virt_addr);
+		}
+		
+		#endif
+		
+		if(status == 1) {
+			kprintf("Error:  %x\n", (virt_addr-virt_addr_start)/0x1000);
+			
+			return (virt_addr-virt_addr_start)/0x1000;
+		}
+		
+		virt_addr+=0x1000;
+		if(virt_addr>=virt_addr_end) {
+			break;
+		}
+	}
+	
+	#ifdef UDEBUG
+	kprintf("Here you go!\n");
+	#endif
+	SwitchPageDirectory(krnl_dir);
+	
+	memcpy(krnl_clone_dir, krnl_dir, sizeof(PageDirectory));
+
+	return 0;
+}
+
+void Paging_Init(int kb_of_mem) {
+	registerIntHandler(14, pf_handler);
+	
+	bits = (Bitset*) kmalloc(sizeof(Bitset));
+	if(bits==NULL) {
+		kprintf("KHeap_error=%x\n", KHeap_GetError());
+	}
+	
+	bits->bit_storage = (UInt32*) kmalloc_a((kb_of_mem/4), true);
+	if(bits->bit_storage==NULL) {
+		kprintf("KHeap_error=%x\n", KHeap_GetError());
+	}
+	
+	bits->length = (kb_of_mem/4)/4;
+	
+	// Create 1:1 mapping on the first 32 megabytes.
+	
+	UInt32 phys = 0;
+	
+	krnl_dir = kmalloc_ap(sizeof(PageDirectory), true, &phys);
+	krnl_dir->phys = (UInt32) phys;
+	PageDirectory* pd = krnl_dir;
+	
+	int i=0;
+	for(i=0; i<(ONE_TO_ONE_MAP_MB/4); i++) {
+		SetBits(bits, (i*1024), ((i+1)*1024));
+
+		PageTable* pt = IdMapPageTable(i);
+		pd->d[i] = AssemblePDE((Pointer) pt->t, 0x7);
+		pd->kd[i] = AssemblePDE((Pointer) pt->t, 0x7);
+	}
+	
+	krnl_clone_dir = kmalloc_ap(sizeof(PageDirectory), true, &phys);
+	krnl_clone_dir->phys = phys;
+	
+	krnl_dir->d[1023] = (PageDirectoryEntry) krnl_dir;
+	memcpy(krnl_clone_dir, krnl_dir, sizeof(PageDirectory));
+	
+	SwitchPageDirectory(krnl_dir);
+}
+
+static PageTable* CloneTable(int pdindex, PageTable* src, UInt32* phys) {
+	#ifdef PAGING_TRACE
+	kprintf("CloneTable(%x,%x)\n", src, phys);
+	#endif
+	EnableLoadIndicator('.',5);
+	
+	PageTable* table = (PageTable*)kmalloc_ap(sizeof(PageTable), true, phys);
+	memset(table, 0, sizeof(PageTable));
+	
+	int i;
+	for(i=0; i<1024; i++) {
+		// If its 0, continue.
+		if(!(src->t[i]&0xFFFFF000)) {
+			continue;
+		}
+		
+		// Allocate a new page.
+		int ip = alloc_frame();
+		
+		// Map the page into the table
+		Pointer phys_addr = (Pointer)(ip*0x1000);
+		table->t[i] = AssemblePTE(phys_addr, (src->t[i]&(0xFFF)));
+		
+		// Copy the contents of one frame to another.  physical addresses only, please.
+		copy_page_phys((src->t[i]&0xFFFFF000), (table->t[i]&0xFFFFF000));
+	}
+	
+	DisableLoadIndicator();
+	wait(1);
+	return table;
+}
+
+static PageTable* OLD_FUNCTION_CloneTable(PageDirectory* pd, PageTable* src, UInt32* phys) {
+	#ifdef PAGING_TRACE
+	kprintf("CloneTable(%x,%x,%x)\n", pd, src, phys);
+	#endif
+	
+	PageTable* table = (PageTable*)kmalloc_ap(sizeof(PageTable), true, phys);
+	
+	memset(table, 0, sizeof(PageTable));
+	
+	int i;
+	
+	#ifdef PAGING_CHECKPOINT
+	kprintf("CHECKPOINT:CloneTable().1\n");
+	#endif
+	
+	for(i=0; i<1024; i++) { // There is a bug here!
+		if(!(src->t[i]&0x1)) {
+			continue;
+		}
+		
+		int ip = alloc_frame(); // returns a physical page address. gran=4k
+		// Map the page
+		UInt32 flags_mask = ~(0xFFFFF000);
+		table->t[i] = (PageTableEntry) AssemblePTE((Pointer) (ip*0x1000), (src->t[i]&flags_mask));
+		
+		#ifdef PAGING_CHECKPOINT
+		if(i<5 || i>=0x3fd) { kprintf("%x, %x, %x, %x, %x\n", &src->t[i], table->t[i]&0xFFFFF000, i, ip, &table->t[i]); wait(1); }
+		#endif
+		
+		copy_page_phys((src->t[i]&0xFFFFF000), (table->t[i]&0xFFFFF000));
+	}
+	
+	return table;
+}
+
+#define PAGING_DEBUG
+
+PageDirectory* CreateNewAddressSpace(PageDirectory* krnl) {
+	int i;
+	
+	UInt32 phys;
+	PageDirectory* dir = (PageDirectory*) kmalloc_ap(sizeof(PageDirectory), true, &phys);
+	
+	for(i=0; i<1024; i++) {
+		// If table is not in krnl then continue
+		if(!(krnl->d[i]&0x1)) {
+			continue;
+		}
+		
+		// If table is in krnl and it is not in orig_krnl_dir then clone it.
+		if(krnl->d[i] == orig_krnl_dir->d[i]) {
+			// Since it is, copy it over to the new directory
+			dir->d[i] = krnl->d[i];
+			dir->kd[i] = krnl->kd[i];
+		} else {
+			int j;
+			PageTable* pt = (PageTable*)(krnl->kd[i]&0xFFFFF000);
+			PageTable* npt = (PageTable*) kmalloc_ap(sizeof(PageTable), true, &phys);
+			
+			for(j=0; j<1024; j++) {
+				if(!(pt->t[i]&1)) {
+					continue;
+				}
+				int afi = alloc_frame();
+				npt->t[i] = afi*0x1000;
+				
+				copy_page_phys((pt->t[i]&0xFFFFF000), (npt->t[i]&0xFFFFF000));
+			}
+		}
+		
+	}
+	
+	return dir;
+}
+
+PageDirectory* CloneDirectory(PageDirectory* src) {
+	// Alright, allocate space for a new directory.
+	UInt32 phys;
+	PageDirectory* dir = (PageDirectory*) kmalloc_ap(sizeof(PageDirectory), true, &phys);
+	
+	// Set up the page directory
+	memset(dir, 0, sizeof(PageDirectory));
+	dir->phys = phys;
+	dir->d[1023] = (PageDirectoryEntry) dir;
+	
+	int i;
+	for(i=0; i<1023; i++) {
+		if(!src->d[i]) {
+			continue;
+		}
+		
+		// If it is a kernel page, "share" it.
+		if(src->d[i] == orig_krnl_dir->d[i]) {
+			dir->d[i] = src->d[i];
+			dir->kd[i] = src->kd[i];
+		} else { // We have to clone a page table.
+			UInt32 phys2;
+			dir->kd[i] = (PageDirectoryEntry) CloneTable(i, (PageTable*)(src->kd[i]&0xFFFFF000), &phys2);
+			dir->d[i] = AssemblePDE((Pointer) phys2, 0x07);
+		}
+		
+	}
+	
+	return dir;
+}
+
+PageDirectory* OLD_FUNCTION_CloneDirectory(PageDirectory* src) {
+	#ifdef PAGING_TRACE
+	kprintf("CloneDirectory(%x)\n", src);
+	#endif
+	
+	UInt32 phys;
+	PageDirectory* dir = (PageDirectory*) kmalloc_ex(sizeof(PageDirectory), true, &phys, false);
+	memset(dir, 0, sizeof(PageDirectory));
+	
+	UInt32 offset = (UInt32)dir->d-(UInt32) dir;
+	
+	dir->phys = phys;
+	dir->d[1023] = (PageDirectoryEntry) dir;
+	
+	int i;
+	for(i=0; i<1023; i++) {
+		if(!src->d[i]) {
+			continue;
+		}
+		
+		if(orig_krnl_dir->d[i] == src->d[i]) {
+			dir->d[i] = src->d[i];
+			dir->kd[i] = src->kd[i];
+		} else {
+			UInt32 phys2;
+			
+			dir->kd[i] = (PageDirectoryEntry) OLD_FUNCTION_CloneTable(src, (PageTable*)(src->kd[i]&0xFFFFF000), &phys2);
+			dir->d[i] = phys2 | 0x07;
+			
+		}
+	}
+	return dir;
+}
+
+Pointer getPhys(Pointer virt) {
+	UInt32 pdindex = (UInt32)virt >> 22;
+	UInt32 ptindex = (UInt32)virt >> 12 & 0x03FF;
+	
+	PageDirectory* pd = cur_dir;
+	UInt32* pt = (UInt32*) (pd->d[pdindex]&0xFFFFF000);
+	
+	return (Pointer) ((pt[ptindex] & ~0xFFF) + ((UInt32)virt & 0xFFF));
+}

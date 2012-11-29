@@ -1,0 +1,4 @@
+megs: 256
+floppya: image="grub_disk.img", status=inserted
+boot: floppy
+cpu: reset_on_triple_fault=1

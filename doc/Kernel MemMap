@@ -1,0 +1,16 @@
+
+0xC0000000
+0xC3FFFFFF
+Reserved space for the heap.
+
+0xC4000000
+0xC5FFFFFF
+Reserved space for the heap's ordered array.
+
+0xC6000000
+0xC7FFFFFF
+Reserved space for the kernel stack.
+
+0xC8000000
+0xFFFFFFFF
+Reserved space for kernel usage.

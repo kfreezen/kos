@@ -1,0 +1,224 @@
+[GLOBAL copy_page_phys]
+
+[SECTION .data]
+old_esp:  dd 0
+
+[SECTION .bss]
+STACK_SIZE equ 1024*4
+stack: resb STACK_SIZE
+end_stack equ stack+STACK_SIZE-4
+
+[section .text]
+
+copy_page_phys:
+	push ebx
+	pushf
+	
+	cli
+	
+	mov ebx, [esp+12]
+	mov ecx, [esp+16]
+	
+	mov edx, cr0
+	and edx, 0x7fffffff
+	mov cr0, edx
+	
+	mov edx, 1024
+	
+	mov esi, ebx
+	mov edi, ecx
+	; [esi] = [edi]
+.loop:
+
+	mov eax, [ebx]
+	mov [ecx], eax
+	add ebx, 4
+	add ecx, 4
+	
+	dec edx
+	jnz .loop
+	
+	mov edx, cr0
+	or edx, 0x80000000
+	mov cr0, edx
+	
+	popf
+	pop ebx
+	ret
+	
+[GLOBAL read_eip]
+read_eip:
+	pop eax
+	jmp eax
+	
+[GLOBAL _switch]
+
+_switch:
+	cli
+	mov ecx, [esp+4]
+	mov ebp, [esp+12]
+	mov edx, [esp+16]
+	; pop esi ; trash value
+	mov esp, [esp+8]
+	
+	mov cr3, edx
+	mov eax, 0x12345
+	sti
+	
+	jmp ecx
+
+[GLOBAL TaskingInit]
+[GLOBAL task_switch]
+[EXTERN cur_task]
+[EXTERN ready_queue]
+[EXTERN next_pid]
+[EXTERN cur_dir]
+
+TaskingInit:
+	cli
+	mov ecx, [cur_task]
+	
+	mov eax, [next_pid]
+	inc eax
+	mov [next_pid], eax
+	
+	mov [ecx], eax
+	
+	xor eax, eax
+	mov [ecx+4], eax
+	mov [ecx+8], eax
+	mov [ecx+12], eax
+	
+	mov eax, [cur_dir]
+	mov [ecx+16], eax
+	mov [ecx+20], DWORD 0
+	
+	sti
+	ret
+	
+[section .data]
+debug0 dd 0
+debug_msg db "hey there", 10, 0
+
+[section .text]
+[extern PutString]
+
+debug_call:
+	mov [debug0], esp
+	push debug_msg
+	call PutString
+	mov esp, [debug0]
+	ret
+	
+debug_call2:
+	mov [debug0], esp
+	int 3
+	mov esp, [debug0]
+	ret
+	
+[GLOBAL __asm_fork]
+
+__asm_fork:
+	cli
+	
+	push ebx
+	push DWORD [cur_task]
+	
+	mov ecx, [esp+12]
+	
+	mov eax, [next_pid]
+	inc eax
+	mov [next_pid], eax
+	
+	mov [ecx], eax
+	
+	xor eax, eax
+	mov [ecx+4], eax
+	mov [ecx+8], eax
+	mov [ecx+12], eax
+	mov [ecx+20], eax
+	
+	mov eax, [esp+16]
+	mov [ecx+16], eax
+	
+	mov eax, [ready_queue]
+	.loop0:
+		test eax, eax
+		jz .loop0_end
+		mov eax, [eax+20]
+		jmp .loop0
+	.loop0_end:
+	
+	push ebx
+	mov ebx, [esp+16]
+	mov [eax+20], ebx
+	pop ebx
+	
+	pop edx
+	cmp edx, [cur_task]
+	jne .else
+	
+	mov ecx, [esp+12]
+	
+	mov [ecx+4], esp
+	mov [ecx+8], ebp
+	
+	push ecx
+	call read_eip
+	pop ecx
+	
+	mov [ecx+12], eax
+	sti
+	
+	mov eax, [ecx]
+	
+	pop ebx
+	ret
+	
+	.else:
+		pop ebx
+		xor eax, eax
+		ret
+		
+[EXTERN GetPhysFromDir]
+[GLOBAL switch_task]
+[EXTERN cur_task]
+[EXTERN ready_queue]
+[EXTERN cur_dir]
+
+switch_task:
+	mov eax, [cur_task]
+	
+	test eax, eax
+	jnz .endif_ret
+	
+	.if_ret:
+		xor eax, eax
+		ret
+	.endif_ret:
+	
+	mov ecx, [eax+20]
+	
+	test ecx, ecx
+	jnz .endif_next
+	
+	.if_next:
+		mov ecx, [ready_queue]
+	.endif_next
+	
+	mov [eax+8], esp
+	mov [eax+12], ebp
+	mov edx, eax
+	
+	call read_eip
+	
+	cmp eax, 0x12345
+	jne .endif_eip12345
+	
+	.if_eip12345:
+		xor eax, eax
+		ret
+	.endif_eip12345:
+	
+	mov [edx+4], eax
+	

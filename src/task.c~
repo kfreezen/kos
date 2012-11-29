@@ -1,0 +1,129 @@
+#include <task.h>
+#include <paging.h>
+#include <kheap.h>
+
+extern void full_invlpg();
+extern UInt32 initial_esp;
+
+volatile Task* cur_task;
+volatile Task* ready_queue;
+
+extern PageDirectory* krnl_dir;
+extern PageDirectory* cur_dir;
+
+extern UInt32 initial_esp;
+extern UInt32 read_eip();
+
+UInt32 next_pid = 0;
+
+#define TASK_DEBUG
+#define TASK_TRACE
+#define TASK_CHECKPOINT
+
+void move_stack(Pointer new_stack_start, UInt32 size) {
+	UInt32 i;
+	
+	/*int status = alloc_pages(NULL, (Pointer)new_stack_start-size, (Pointer)new_stack_start+0x1000);*/
+	
+	init_orig_dir();
+	
+	for(i=(UInt32)new_stack_start+0x1000; i>=((UInt32)new_stack_start-size); i -= 0x1000) {
+		
+		alloc_page(NULL, (Pointer) i-0x1000);
+	}
+	
+	memset(new_stack_start-size,0,size+0x100);
+	
+	#ifdef TASK_TRACE
+	kprintf("\nmove_stack(%x,%x)\n", new_stack_start, size);
+	#endif
+	
+}
+
+Bool task_isinit = false;
+
+void init_tasking() {
+	asm volatile("cli");
+	
+	cur_task = ready_queue = kmalloc(sizeof(Task));
+	cur_task->esp = cur_task->ebp = cur_task->eip = 0;
+	cur_task->dir = cur_dir;
+	cur_task->next = NULL;
+	cur_task->id = next_pid++;
+	
+	asm volatile("sti");
+}
+
+int fork() {
+	asm volatile("cli");
+	
+	Task* new_task = kmalloc(sizeof(Task));
+	
+	new_task->dir = CreateNewAddressSpace(krnl_dir);
+	new_task->esp = new_task->ebp = 0;
+	new_task->eip = 0;
+	new_task->id = next_pid++;
+	new_task->next = 0;
+	
+	Task* tmp = ready_queue;
+	while(tmp->next) {
+		tmp = tmp->next;
+	}
+	
+	tmp->next = new_task;
+	
+	Task* parent = cur_task;
+	new_task->eip = read_eip();
+	
+	if(cur_task == parent) {
+		asm volatile("mov %%esp, %0" : "=r" (new_task->esp));
+		asm volatile("mov %%ebp, %0" : "=r" (new_task->ebp));
+		asm volatile("sti");
+		
+		return new_task->id;
+	} else {
+		return 0;
+	}
+}
+
+extern void __asm_store_vals(UInt32* esp, UInt32* ebp);
+
+void switch_task() {
+	if(!cur_task) return;
+	
+	UInt32 eip, esp, ebp;
+	Task* next = cur_task->next;
+	
+	if(!next) next = ready_queue;
+	
+	// Store the current task's stuff.
+	asm volatile("mov %%esp, %0" : "=a" (esp));
+	asm volatile("mov %%ebp, %0" : "=a" (ebp));
+	
+	eip = read_eip();
+	if(eip == 0x12345) {
+		return;
+	}
+	
+	cur_task->eip = eip;
+	cur_task->esp = esp;
+	cur_task->ebp = ebp;
+	
+	cur_dir = next->dir;
+	cur_task = next;
+	
+	asm volatile("         \
+      cli;                 \
+      mov %0, %%ecx;       \
+      mov %1, %%esp;       \
+      mov %2, %%ebp;       \
+      mov %3, %%cr3;       \
+      mov $0x12345, %%eax; \
+      sti;                 \
+      jmp *%%ecx           "
+                 : : "r"(cur_task->eip), "r"(cur_task->esp), "r"(cur_task->ebp), "r"(cur_dir->phys));
+}
+
+UInt32 getPhysFromDir(PageDirectory* pd) {
+	return pd->phys;
+}
