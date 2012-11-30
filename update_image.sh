@@ -6,9 +6,11 @@ sudo mount /dev/loop0 /media/loop0
 
 ./make-initrd `tr '\n' ' ' < initrd-files`
 
+nasm -fbin helloworld.asm
+
 sudo cp kernel /media/loop0/kernel
 sudo cp initrd.img /media/loop0/initrd.img
-sudo cp test1.txt /media/loop0/test1.txt
+sudo cp helloworld /media/loop0/hlowrld.bin
 sleep 0.25s
 sudo umount /media/loop0
 

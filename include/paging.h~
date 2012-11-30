@@ -23,10 +23,8 @@ Pointer getPhys(Pointer virt);
 
 void SwitchPageDirectory(PageDirectory* dir);
 
-int alloc_page(PageDirectory* pd, Pointer virt_addr);
-int alloc_page_ex(PageDirectory* pd, Pointer virt_addr, Bool do_firstSwitchDir, Bool do_lastSwitchDir);
-int alloc_pages(PageDirectory* pd, Pointer virt_addr_start, Pointer virt_addr_end);
 PageDirectory* CloneDirectory(PageDirectory* src);
+PageDirectory* CreateNewAddressSpace(PageDirectory* krnl);
 
 void init_orig_dir(); // Initializes the original kernel dir reference for multitasking.
 #define PAGE_DIR_SIZE (sizeof(PageDirectoryEntry)*1024)

@@ -10,6 +10,8 @@ typedef struct {
 
 void Bitset_Copy(Bitset* dest, Bitset* src);
 
+// Each unit in length represents 32 bits.  A bitset with a length of 3 has a maximum capacity of 96 bits.
+
 Bitset* Bitset_Create(UInt32 length);
 
 extern int Bitset_Test(Bitset* set, int nthBit);
