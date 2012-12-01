@@ -4,8 +4,8 @@
 #include <KOSTypes.h>
 
 typedef struct {
-	UInt32 length; // In UInt32's
 	UInt32* bitData;
+	UInt32 length; // In UInt32's
 } Bitset;
 
 void Bitset_Copy(Bitset* dest, Bitset* src);
@@ -15,7 +15,7 @@ void Bitset_Copy(Bitset* dest, Bitset* src);
 Bitset* Bitset_Create(UInt32 length);
 
 extern int Bitset_Test(Bitset* set, int nthBit);
-extern int Bitset_Set(Bitset* set, int toSet, int val);
+int Bitset_Set(Bitset* set, UInt32 toSet, int val);
 
 void Bitset_Resize(Bitset* bits, int size);
 

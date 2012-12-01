@@ -24,9 +24,19 @@ Bitset* Bitset_Create(UInt32 length) {
 
 // A faster implementation.
 int Bitset_FirstWithValue(Bitset* bits, int value) {
+	//kprintf("Bitset_FirstWithValue(%x, %x)\n", bits, value);
+	
 	if(bits==NULL) {
+		kprintf("bits==null\n");
+		
 		return -1;
 	}
+	
+	if(bits->bitData==NULL) {
+		kprintf("bits->bitData==null\n");
+		return -1;
+	}
+	
 	int testvalue = (value&1) ? 0 : ~0;
 	
 	int i;
@@ -42,6 +52,7 @@ int Bitset_FirstWithValue(Bitset* bits, int value) {
 		}
 	}
 	
+	kprintf("Done. None found.\n");
 	return -1;
 }
 
@@ -60,4 +71,28 @@ void Bitset_Resize(Bitset* bits, int size) {
 	
 	bits->length = size/32;
 	bits->bitData = bitsData;
+}
+
+int Bitset_Set(Bitset* bits, UInt32 idx, int value) {
+	value &= 1;
+	
+	if(bits==NULL) {
+		kprintf("Invalid argument: bits==NULL\n");
+		return -1;
+	}
+	
+	if(idx>bits->length*32) {
+		kprintf("Invalid argument: idx>bits->length*32\n");
+		return -1;
+	}
+	
+	//kprintf("Bitset_Set(%x, %x, %x)", bits, idx, value);
+	
+	if(value) {
+		bits->bitData[idx/32] |= 1<<(idx%32);
+	} else {
+		bits->bitData[idx/32] &= ~(1<<(idx%32));
+	}
+	
+	return 0;
 }

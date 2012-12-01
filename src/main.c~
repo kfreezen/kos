@@ -19,6 +19,7 @@
 #include <vfs.h>
 #include <floppy.h>
 #include <fat12.h>
+#include <paging.h>
 
 #define PIT_MSTIME 20
 
@@ -82,6 +83,14 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	func();*/
 	
 	init_kheap();
+	
+	kprintf("Paging... ");
+	InitPaging(64*1024);
+	MapAllocatedPageBlockTo(NULL, 0x439000);
+	//MapAllocatedPageTo(NULL, 0x404000);
+	kprintf("[ok]\n");
+	
+	/*
 	Heap* heap = createHeap(HEAP_MIN_SIZE);
 	setKernelHeap(heap);
 	
@@ -90,12 +99,13 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	FAT12_Context* context = FAT12_GetContext(FloppyGetDevice());
 	FAT12_File* file = FAT12_GetFile(context, "HLOWRLD BIN");
 	UInt8* buf = (UInt8*) kalloc(512);
-	FAT12_Read(file, 0, 0, buf);
+	FAT12_Read_LL(file, 0, 0, buf);
 	memcpy((void*)0x500, buf, 512);
 	
 	kprintf("buf=%x\n", buf);
 	function f = (function) 0x500;
 	f();
+	*/
 	
 	return 0;
 }

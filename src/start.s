@@ -40,7 +40,8 @@ mov_eax:
 	ret
 
 _invlpg:
-	invlpg [esp+4]
+	mov eax, [esp+4]
+	invlpg [eax]
 	ret
 
 full_invlpg:

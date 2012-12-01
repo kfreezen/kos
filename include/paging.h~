@@ -8,7 +8,7 @@ typedef UInt32 PageTableEntry;
 
 typedef struct __page_dir {
 	PageDirectoryEntry d[1024];
-	PageDirectoryEntry kd[1024]; // All the addresses as seen by the kernel.
+	PageDirectoryEntry kd[1024]; // All the addresses as seen by the kernel. (physical or virtual?)
 	UInt32 phys;
 } PageDirectory;
 
@@ -16,17 +16,19 @@ typedef struct __page_table {
 	PageTableEntry t[1024];
 } PageTable;
 
-PageDirectoryEntry AssemblePDE(Pointer pt, UInt32 flags);
-PageTableEntry AssemblePTE(Pointer page, UInt32 flags);
+PageDirectoryEntry AssemblePDE(PageTable* pt, UInt32 flags);
+PageTableEntry AssemblePTE(void* page, UInt32 flags);
 
-Pointer getPhys(Pointer virt);
+Pointer getPhysAddr(PageDirectory* dir, Pointer virt);
 
 void SwitchPageDirectory(PageDirectory* dir);
 
 PageDirectory* CloneDirectory(PageDirectory* src);
 PageDirectory* CreateNewAddressSpace(PageDirectory* krnl);
 
-void init_orig_dir(); // Initializes the original kernel dir reference for multitasking.
+void InitPaging(int mem_kb);
+int MapAllocatedPageTo(PageDirectory* dir, void* virtAddr);
+
 #define PAGE_DIR_SIZE (sizeof(PageDirectoryEntry)*1024)
 #define PAGE_TABLE_SIZE (sizeof(PageTableEntry)*1024)
 
@@ -36,5 +38,11 @@ void init_orig_dir(); // Initializes the original kernel dir reference for multi
 
 #define PAGE_GRAN(i) ((i) / PAGE_SIZE)
 #define ADDRESS_OF_PAGE(i) ((i)*PAGE_SIZE)
+
+#define READ_WRITE_PAGE 1<<1
+#define PRESENT 1<<0 // DEPRECATED:  Use PAGE_PRESENT instead.
+#define PAGE_PRESENT 1<<0
+
+#define KERNEL_PAGE_FLAGS READ_WRITE_PAGE | PRESENT
 
 #endif

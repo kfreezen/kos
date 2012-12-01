@@ -1,5 +1,6 @@
 #include <kheap.h>
 #include <print.h>
+#include <paging.h>
 
 extern UInt32 end;
 Pointer placement_address=&end;
@@ -11,6 +12,10 @@ void init_kheap() {
 }
 
 Pointer kmalloc_int(int sz, Bool pg_align, UInt32* phys) {
+	if(kHeap) {
+		return kalloc_ex(sz, pg_align, phys);
+	}
+	
 	if(pg_align) {
 		placement_address = (Pointer)((UInt32) placement_address & 0xFFFFF000);
 		placement_address+=0x1000;
@@ -30,12 +35,16 @@ Pointer kmalloc(int sz) {
 	return kmalloc_int(sz, false, NULL);
 }
 
-Pointer kmalloc_a(int sz, Bool pg_align) {
-	return kmalloc_int(sz, pg_align, NULL);
+Pointer kmalloc_a(int sz) {
+	return kmalloc_int(sz, true, NULL);
 }
 
-Pointer kmalloc_ap(int sz, Bool pg_align, UInt32* phys) {
-	return kmalloc_int(sz, pg_align, phys);
+Pointer kmalloc_ap(int sz, UInt32* phys) {
+	return kmalloc_int(sz, true, phys);
+}
+
+Pointer kmalloc_p(int sz, UInt32* phys) {
+	return kmalloc_int(sz, false, phys);
 }
 
 void kfree(Pointer p) {
@@ -54,17 +63,62 @@ Pointer kalloc(UInt32 size) {
 	}
 }
 
+Pointer kalloc_ex(UInt32 size, Bool pg_align, UInt32* phys) {
+	if(kHeap==NULL) {
+		return 0;
+	} else {
+		Pointer p = heap_alloc_ex(kHeap, size, pg_align);
+		if(phys) {
+			*phys = (UInt32) getPhysAddr(NULL, p);
+		}
+		
+		return p;
+	}
+}
+
 void addMemory(Heap* heap, UInt32 size) {
-	// TODO:  Implement this function.
+	if(heap->flags&HEAP_EXTENDABLE) {
+		if(size&(HEAP_ADD_AMOUNT-1)) {
+			size = (size&~(HEAP_ADD_AMOUNT-1)) + HEAP_ADD_AMOUNT;
+		}
+	} else {
+		int i;
+		for(i=0; i<size/HEAP_ADD_AMOUNT; i++) {
+			MapAllocatedPageBlockTo(NULL, heap->end+(i*HEAP_ADD_AMOUNT));
+		}
+		HeapHeader* header = (HeapHeader*) heap->end;
+		heap->end = heap->end+((i-1)*HEAP_ADD_AMOUNT);
+		HeapFooter* footer = (HeapFooter*) heap->end-sizeof(HeapFooter*);
+		header->magic_flags = HEAP_MAGIC | HEAP_FREE;
+		header->footer = footer;
+		footer->header = header;
+	}
+}
+
+void InitKernelHeap() {
+	kHeap = kmalloc(sizeof(Heap));
+	
+	MapAllocatedPageBlockTo(NULL, (void*)0xC0000000);
+	void* heapData = (void*)0xC0000000;
+	
+	Heap* heap = kHeap;
+	memset(heapData, 0, HEAP_ADD_AMOUNT);
+	heap->start = heapData;
+	heap->end = heapData+HEAP_ADD_AMOUNT;
+	HeapHeader* header = (HeapHeader*) heap->start;
+	HeapFooter* footer = (HeapFooter*) ((unsigned)heap->end-sizeof(HeapFooter));
+	footer->header = header;
+	header->magic_flags = HEAP_MAGIC | HEAP_FREE;
+	header->footer = footer;
 }
 
 Heap* createHeap(UInt32 size) {
 	void* heapData;
 	Heap* heap;
 	
-	heapData = kmalloc_a(size, TRUE);
-	memset(heapData, 0, size);
 	heap = kmalloc(sizeof(Heap));
+	heapData = kmalloc_a(size);
+	memset(heapData, 0, size);
 	heap->start = heapData;
 	heap->end = heapData+size;
 	HeapHeader* header = (HeapHeader*) heap->start;
@@ -72,6 +126,8 @@ Heap* createHeap(UInt32 size) {
 	footer->header = header;
 	header->magic_flags = HEAP_MAGIC | HEAP_FREE;
 	header->footer = footer;
+	
+	heap->flags =0;
 	
 	return heap;
 }
@@ -126,21 +182,48 @@ HeapHeader* findFreeMemory(Heap* heap, UInt32 size) {
 }
 
 void* heap_alloc(Heap* heap, UInt32 size) {
+	return heap_alloc_ex(heap, size, FALSE);
+}
+
+void* heap_alloc_ex(Heap* heap, UInt32 size, Bool pg_align) {
 	// Round up to a 4-byte alignment.
 	if(size&0x3) {
 		size = (size&~3)+4;
 	}
 	
+	if(pg_align) {
+		size = size+0x1000;
+	}
+	
 	HeapHeader* header = findFreeMemory(heap, size);
 	if(header==0) {
-		// TODO: Throw major error, go crazy.
-		kprintf("AAAAHHHH!!!!! INVALID HEADER!!!!\n");
-		return 0;
+		addMemory(heap, (size>HEAP_ADD_AMOUNT) ? size : HEAP_ADD_AMOUNT);
+		if(header==0) {
+			// TODO: Throw major error, go crazy.
+			kprintf("AAAAHHHH!!!!! INVALID HEADER!!!!\n");
+			return 0;
+		}
 	}
 	
 	HeapFooter* footer = header->footer;
 	UInt32 block_size = ((unsigned)header->footer)-(((unsigned)header)+sizeof(HeapHeader));
-	if(block_size==size && (header->magic_flags&HEAP_FREE)==HEAP_FREE) {
+	
+	if(pg_align) {
+			HeapHeader* newHeader = header;
+			if(((unsigned)header+sizeof(HeapHeader))&0xFFF) { 
+				newHeader = (HeapHeader*)((((unsigned) header)&0xFFFFF000)+0x1000-sizeof(HeapHeader));
+			}
+			
+			newHeader->footer = footer;
+			newHeader->magic_flags = HEAP_MAGIC;
+			HeapFooter* leftFooter = (HeapFooter*)((void*)newHeader-sizeof(HeapFooter));
+			if(newHeader!=header) {
+				leftFooter->header = header;
+				header->footer = leftFooter;
+			}
+			
+			return (void*) newHeader+sizeof(HeapHeader);
+	} else if(block_size==size && (header->magic_flags&HEAP_FREE)==HEAP_FREE) {
 		header->magic_flags &= ~HEAP_FREE;
 		kprintf("rc0,%x,%x\n",size,block_size);
 		return (void*) ((unsigned)header+sizeof(HeapHeader));
@@ -221,6 +304,7 @@ void heap_free(Heap* heap, void* pointer) {
 
 void setKernelHeap(Heap* heap) {
 	kHeap = heap;
+	kHeap->flags |= HEAP_EXTENDABLE;
 	kprintf("KernelHeap=%x\n", kHeap);
 }
 

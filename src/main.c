@@ -19,6 +19,7 @@
 #include <vfs.h>
 #include <floppy.h>
 #include <fat12.h>
+#include <paging.h>
 
 #define PIT_MSTIME 20
 
@@ -82,6 +83,14 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	func();*/
 	
 	init_kheap();
+	
+	kprintf("Paging... ");
+	InitPaging(64*1024);
+	MapAllocatedPageBlockTo(NULL, 0x440000);
+	//MapAllocatedPageTo(NULL, 0x404000);
+	kprintf("[ok]\n");
+	
+	/*
 	Heap* heap = createHeap(HEAP_MIN_SIZE);
 	setKernelHeap(heap);
 	
@@ -96,6 +105,7 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	kprintf("buf=%x\n", buf);
 	function f = (function) 0x500;
 	f();
+	*/
 	
 	return 0;
 }

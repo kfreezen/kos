@@ -75,7 +75,7 @@ FAT12_File* FAT12_GetFile(FAT12_Context* context, const char* file) {
 
 Byte readSectorBuffer[512];
 
-UInt32 FAT12_Read(FAT12_File* node, UInt32 offset, UInt32 length, UInt8* buf) {
+UInt32 FAT12_Read_LL(FAT12_File* node, UInt32 offset, UInt32 length, UInt8* buf) {
 	offset &= ~511;
 	
 	if(node->data.attribute==FAT12_ATTR_DIR) {
@@ -113,5 +113,5 @@ UInt32 FAT12_Read(FAT12_File* node, UInt32 offset, UInt32 length, UInt8* buf) {
 		}
 	}
 	
-	return buffer;
+	return -1;
 }

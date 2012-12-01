@@ -86,7 +86,7 @@ UInt32 FAT12_Read_LL(FAT12_File* node, UInt32 offset, UInt32 length, UInt8* buf)
 		length = node->data.fileSize;
 	}
 	
-	int size = (node->data.fileSize&~0x1FF)+0x200;
+	//int size = (node->data.fileSize&~0x1FF)+0x200;
 	
 	UInt8* buffer = buf;
 	
@@ -113,5 +113,5 @@ UInt32 FAT12_Read_LL(FAT12_File* node, UInt32 offset, UInt32 length, UInt8* buf)
 		}
 	}
 	
-	return buffer;
+	return -1;
 }

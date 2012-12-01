@@ -17,5 +17,5 @@ unsigned ClearScreen_SysCall(unsigned syscall_addr, Byte n) {
 extern unsigned syscall(void);
 
 unsigned syscallna(Byte n) {
-	syscall()
+	syscall();
 }
