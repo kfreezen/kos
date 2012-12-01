@@ -66,13 +66,15 @@ int testKHeap() {
 	int totalOverhead=0;
 	for(i=0; i<16; i++) {
 		p[i] = kalloc(i*4);
+		kprintf("AfterKalloc");
 		totalAllocated+=i*4;
 		totalOverhead += sizeof(HeapHeader)+sizeof(HeapFooter);
 		
 		Verification v = verifyKAllocProper(p[i], i*4, KALLOC);
 		
+		kprintf("%d: %d, %s\n", i, v.errCode, v.err);
+		
 		if(v.errCode==FAIL) {
-			kprintf("%d: %d, %s\n", i, v.errCode, v.err);
 			return FAIL;
 		}
 	}

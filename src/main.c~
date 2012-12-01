@@ -86,13 +86,12 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	
 	kprintf("Paging... ");
 	InitPaging(64*1024);
-	MapAllocatedPageBlockTo(NULL, 0x439000);
-	//MapAllocatedPageTo(NULL, 0x404000);
+	//MapAllocatedPageBlockTo(NULL, 0xC0000000);
 	kprintf("[ok]\n");
 	
+	InitKernelHeap();
+	
 	/*
-	Heap* heap = createHeap(HEAP_MIN_SIZE);
-	setKernelHeap(heap);
 	
 	FloppyInit();
 	
@@ -108,6 +107,11 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	*/
 	
 	return 0;
+}
+
+void thread0() {
+	kprintf("thread0!\n");
+	Thread_Yield();
 }
 
 #else

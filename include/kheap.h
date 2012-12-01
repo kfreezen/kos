@@ -46,8 +46,10 @@ Pointer heap_alloc_ex(Heap* heap, UInt32 size, Bool pg_align);
 
 void heap_free(Heap* heap, void* ptr);
 Heap* createHeap(UInt32 size);
+
 void setKernelHeap(Heap* heap);
 Heap* getKernelHeap();
+void InitKernelHeap();
 
 Pointer kalloc(UInt32 size);
 Pointer kalloc_ex(UInt32 size, Bool pg, UInt32* phys);

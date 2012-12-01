@@ -2,6 +2,8 @@
 #include <print.h>
 #include <paging.h>
 
+#define HEAP_DEBUG
+
 extern UInt32 end;
 Pointer placement_address=&end;
 
@@ -82,26 +84,28 @@ void addMemory(Heap* heap, UInt32 size) {
 			size = (size&~(HEAP_ADD_AMOUNT-1)) + HEAP_ADD_AMOUNT;
 		}
 	} else {
-		int i;
-		for(i=0; i<size/HEAP_ADD_AMOUNT; i++) {
-			MapAllocatedPageBlockTo(NULL, heap->end+(i*HEAP_ADD_AMOUNT));
-		}
-		HeapHeader* header = (HeapHeader*) heap->end;
-		heap->end = heap->end+((i-1)*HEAP_ADD_AMOUNT);
-		HeapFooter* footer = (HeapFooter*) heap->end-sizeof(HeapFooter*);
-		header->magic_flags = HEAP_MAGIC | HEAP_FREE;
-		header->footer = footer;
-		footer->header = header;
+		kprintf("Heap not extendable.\n");
+		return;
 	}
+	
+	int i;
+	for(i=0; i<size/HEAP_ADD_AMOUNT; i++) {
+		MapAllocatedPageBlockTo(NULL, heap->end+(i*HEAP_ADD_AMOUNT));
+	}
+	HeapHeader* header = (HeapHeader*) heap->end;
+	heap->end = heap->end+((i-1)*HEAP_ADD_AMOUNT);
+	HeapFooter* footer = (HeapFooter*) ((void*)heap->end-sizeof(HeapFooter));
+	header->magic_flags = HEAP_MAGIC | HEAP_FREE;
+	header->footer = footer;
+	footer->header = header;
 }
 
 void InitKernelHeap() {
-	kHeap = kmalloc(sizeof(Heap));
+	Heap* heap = kmalloc(sizeof(Heap));
 	
-	MapPageBlockTo(NULL, 0xC0000000);
+	MapAllocatedPageBlockTo(NULL, (void*)0xC0000000);
 	void* heapData = (void*)0xC0000000;
 	
-	Heap* heap = kHeap;
 	memset(heapData, 0, HEAP_ADD_AMOUNT);
 	heap->start = heapData;
 	heap->end = heapData+HEAP_ADD_AMOUNT;
@@ -110,6 +114,9 @@ void InitKernelHeap() {
 	footer->header = header;
 	header->magic_flags = HEAP_MAGIC | HEAP_FREE;
 	header->footer = footer;
+	heap->flags = HEAP_EXTENDABLE;
+	
+	kHeap = heap;
 }
 
 Heap* createHeap(UInt32 size) {
@@ -139,6 +146,10 @@ HeapHeader* findFreeMemory(Heap* heap, UInt32 size) {
 	HeapHeader* smallestHoleThatFits=0;
 	unsigned smallestHoleSize=~0x0;
 	while(1) {
+		if((unsigned)header+sizeof(HeapHeader)>=heap->end || (unsigned)header->footer+sizeof(HeapFooter)>=heap->end) {
+			break;
+		}
+
 		int holeSize = ((unsigned)header->footer)-((unsigned)header+sizeof(HeapHeader));
 		
 		// This is kind-of a work around special-case that I would rather not have to cover.
@@ -198,6 +209,7 @@ void* heap_alloc_ex(Heap* heap, UInt32 size, Bool pg_align) {
 	HeapHeader* header = findFreeMemory(heap, size);
 	if(header==0) {
 		addMemory(heap, (size>HEAP_ADD_AMOUNT) ? size : HEAP_ADD_AMOUNT);
+		header = findFreeMemory(heap, size);
 		if(header==0) {
 			// TODO: Throw major error, go crazy.
 			kprintf("AAAAHHHH!!!!! INVALID HEADER!!!!\n");

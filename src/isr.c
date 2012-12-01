@@ -79,6 +79,17 @@ static void invalid_opcode_handler(Registers regs) {
 	for(;;);
 }
 
+static void page_fault_handler(Registers regs) {
+	//ClsEx(BSOD_ATTR);
+	
+	UInt32 cr2;
+	asm volatile( "mov %%cr2, %0" : "=r"(cr2) );
+	
+	kprintf("PAGE_FAULT:  errCode=%x, address=%x\n", regs.err_code, cr2);
+	
+	for(;;);
+}
+
 static void null_irq7_handler(Registers regs) {
 
 }
@@ -110,6 +121,7 @@ int ISR_Init() {
 	registerIntHandler(8, double_fault_handler);
 	
 	registerIntHandler(13, gpf_handler);
+	registerIntHandler(14, page_fault_handler);
 	
 	registerIntHandler(IRQ1, null_kb_handler);
 	registerIntHandler(IRQ7, null_irq7_handler);
