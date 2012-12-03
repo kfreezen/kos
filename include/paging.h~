@@ -48,6 +48,8 @@ int MapAllocatedPageBlockTo(PageDirectory* dir, void* virtAddr);
 #define PAGE_AVAILABLE_BIT2 1<<11
 
 #define PAGE_KERNEL PAGE_AVAILABLE_BIT0
+
+#define KERNEL_PDE_FLAGS READ_WRITE_PAGE | PRESENT
 #define KERNEL_PAGE_FLAGS PAGE_KERNEL | READ_WRITE_PAGE | PRESENT
 
 #endif

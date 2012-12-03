@@ -16,7 +16,7 @@ typedef struct __page_table {
 	PageTableEntry t[1024];
 } PageTable;
 
-PageDirectoryEntry AssemblePDE(PageTable* pt, UInt32 flags);
+PageDirectoryEntry AssemblePDE(UInt32 pt, UInt32 flags);
 PageTableEntry AssemblePTE(void* page, UInt32 flags);
 
 Pointer getPhysAddr(PageDirectory* dir, Pointer virt);

@@ -68,8 +68,8 @@ PageDirectory* CloneDirectory(PageDirectory* dir) {
 			
 			if(dir->d[i]&PAGE_KERNEL) {
 				PageTable* newTable = (PageTable*) kalloc_ex(sizeof(PageTable), true, &phys);
-				newPageDir->d[i] = AssemblePDE(getPhysAddr(newTable), dir->d[i]&0xFFF);
-				newPageDir->kd[i] = newTable;
+				newPageDir->d[i] = AssemblePDE(getPhysAddr(currentPageDir, newTable), dir->d[i]&0xFFF);
+				newPageDir->kd[i] = (UInt32) newTable;
 				
 				for(j=0; j<1024; j++) {
 					if(table->t[j]&PAGE_PRESENT && table->t[j]&PAGE_KERNEL) {
@@ -88,21 +88,22 @@ PageDirectory* CloneDirectory(PageDirectory* dir) {
 }
 		
 		
-PageDirectoryEntry AssemblePDE(PageTable* table, UInt32 flags) {
+PageDirectoryEntry AssemblePDE(UInt32 addr, UInt32 flags) {
 	#ifdef PAGING_DEBUG_VERBOSE
 	kprintf("AssemblePDE(%x,%x) ", table, flags);
 	#endif
 	
-	if((unsigned)table&0xFFF) {
+	if(addr&0xFFF) {
+		kprintf("Firing int 13.  AssemblePDE().\n");
 		asm volatile("int $13");
 		return 0;
 	}
 	
 	#ifdef PAGING_DEBUG_VERBOSE
-	kprintf("ret %x\n", (UInt32) table | (flags&0xFFF));
+	kprintf("ret %x\n", (UInt32) addr | (flags&0xFFF));
 	#endif
 	
-	return (UInt32) table | (flags&0xFFF);
+	return (UInt32) addr | (flags&0xFFF);
 }
 
 PageTableEntry AssemblePTE(void* address, UInt32 flags) {

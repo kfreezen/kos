@@ -114,6 +114,11 @@ void thread0() {
 	Thread_Yield();
 }
 
+void thread1() {
+	kprintf("thread1!\n");
+	Thread_Yield();
+}
+
 #else
 #include <KOSTypes.h>
 

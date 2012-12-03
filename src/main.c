@@ -109,6 +109,7 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	return 0;
 }
 
+/*
 void thread0() {
 	kprintf("thread0!\n");
 	Thread_Yield();
@@ -117,7 +118,7 @@ void thread0() {
 void thread1() {
 	kprintf("thread1!\n");
 	Thread_Yield();
-}
+}*/
 
 #else
 #include <KOSTypes.h>
