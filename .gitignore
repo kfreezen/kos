@@ -1,0 +1,10 @@
+##### Backup files ######
+*.c~
+*.s~
+
+##### Other stuff
+kernel
+initrd.img
+grub_disk.img
+make-initrd.c
+
