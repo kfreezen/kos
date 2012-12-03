@@ -12,6 +12,10 @@ void outb(UInt16 port, UInt8 value) {
 	asm volatile("outb %1, %0" : : "dN" (port), "a" (value));
 }
 
+void outl(UInt16 port, UInt32 value) {
+	asm volatile("outl %1, %0" : : "dN" (port), "a" (value));
+}
+
 UInt8 inb(UInt16 port) {
 	UInt8 ret;
 	asm volatile("inb %1, %0" : "=a" (ret) : "dN" (port));
@@ -21,6 +25,12 @@ UInt8 inb(UInt16 port) {
 UInt16 inw(UInt16 port) {
 	UInt16 ret;
 	asm volatile("inw %1, %0" : "=a" (ret) : "dN" (port));
+	return ret;
+}
+
+UInt32 inl(UInt16 port) {
+	UInt32 ret;
+	asm volatile("inl %1, %0" : "=a" (ret) : "dN" (port));
 	return ret;
 }
 

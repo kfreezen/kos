@@ -13,6 +13,12 @@ typedef struct {
 	int capacity;
 } ArrayList;
 
+typedef struct {
+	int idx;
+	int nextIdx;
+	ArrayList* list;
+} ALIterator;
+
 ArrayList* ALCreate();
 
 void* ALGetPtr(ArrayList* list, int idx);
@@ -22,4 +28,11 @@ int ALAdd(ArrayList* list, void* value);
 
 void expand(ArrayList* list);
 void contract(ArrayList* list);
+
+ALIterator* ALGetItr(ArrayList* list);
+void ALItrReset(ALIterator* itr);
+Bool ALItrHasNext(ALIterator* itr);
+void* ALItrNext(ALIterator* itr);
+void ALFreeIterator(ALIterator* itr);
+
 #endif
