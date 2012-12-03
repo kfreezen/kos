@@ -2,6 +2,7 @@
 #define PAGING_H
 
 #include <KOSTypes.h>
+#include <print.h>
 
 typedef UInt32 PageDirectoryEntry;
 typedef UInt32 PageTableEntry;
@@ -19,7 +20,7 @@ typedef struct __page_table {
 PageDirectoryEntry AssemblePDE(PageTable* pt, UInt32 flags);
 PageTableEntry AssemblePTE(void* page, UInt32 flags);
 
-Pointer getPhysAddr(PageDirectory* dir, Pointer virt);
+inline Pointer getPhysAddr(PageDirectory* dir, Pointer virt);
 
 void SwitchPageDirectory(PageDirectory* dir);
 
@@ -27,8 +28,8 @@ PageDirectory* CloneDirectory(PageDirectory* src);
 PageDirectory* CreateNewAddressSpace(PageDirectory* krnl);
 
 void InitPaging(int mem_kb);
-int MapAllocatedPageTo(PageDirectory* dir, void* virtAddr);
-int MapAllocatedPageBlockTo(PageDirectory* dir, void* virtAddr);
+inline int MapAllocatedPageTo(PageDirectory* dir, void* virtAddr);
+inline int MapAllocatedPageBlockTo(PageDirectory* dir, void* virtAddr);
 #define PAGE_DIR_SIZE (sizeof(PageDirectoryEntry)*1024)
 #define PAGE_TABLE_SIZE (sizeof(PageTableEntry)*1024)
 

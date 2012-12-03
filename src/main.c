@@ -20,6 +20,7 @@
 #include <floppy.h>
 #include <fat12.h>
 #include <paging.h>
+#include <pci.h>
 
 #define PIT_MSTIME 20
 
@@ -84,12 +85,7 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	
 	init_kheap();
 	
-	kprintf("Paging... ");
-	InitPaging(64*1024);
-	//MapAllocatedPageBlockTo(NULL, 0xC0000000);
-	kprintf("[ok]\n");
-	
-	InitKernelHeap();
+	setKernelHeap(createHeap(0x80000));
 	
 	/*
 	
@@ -106,17 +102,13 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	f();
 	*/
 	
+	kprintf("Scanning PCI Devices... ");
+	checkAllBuses();
+	kprintf("[ok]\n");
+	
+	DumpPCIDeviceData();
+	
 	return 0;
-}
-
-void thread0() {
-	kprintf("thread0!\n");
-	Thread_Yield();
-}
-
-void thread1() {
-	kprintf("thread1!\n");
-	Thread_Yield();
 }
 
 #else
@@ -125,7 +117,7 @@ void thread1() {
 #include <print.h>
 #include <gdt.h>
 #include <idt.h>
-#include <paging.h>
+//#include <paging.h>
 #include <multiboot.h>
 #include <kheap.h>
 #include <keyboard.h>
