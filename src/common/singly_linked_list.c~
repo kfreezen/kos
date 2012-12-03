@@ -2,7 +2,8 @@
 
 void SLL_Add(SinglyLinkedList* list, SinglyLinkedNode* node) {
 	list->end->next = node;
-	list->end = node;	
+	list->end = node;
+	node->next = 0;
 }
 
 Bool SLL_Remove(SinglyLinkedList* list, SinglyLinkedNode* node) {

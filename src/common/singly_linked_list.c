@@ -1,4 +1,4 @@
-#include <linkedlist.h>
+#include <common/linkedlist.h>
 
 void SLL_Add(SinglyLinkedList* list, SinglyLinkedNode* node) {
 	list->end->next = node;
