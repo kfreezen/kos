@@ -14,4 +14,4 @@ sudo cp helloworld /media/loop0/hlowrld.bin
 sleep 0.25s
 sudo umount /media/loop0
 
-sudo qemu-system-x86_64 -soundhw sb16,ac97 -fda /dev/loop0
+sudo qemu-system-x86_64 -soundhw sb16 -vga std -fda /dev/loop0

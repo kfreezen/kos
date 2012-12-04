@@ -21,6 +21,7 @@
 #include <fat12.h>
 #include <paging.h>
 #include <pci.h>
+#include <cl5446.h>
 
 #define PIT_MSTIME 20
 
@@ -63,7 +64,7 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	memcpy(mboot_hdr, mboot, sizeof(MultibootHeader));
 	
 	//new_start(stack, mboot_hdr);
-	kprintf("kOS v0.6.2\n");
+	kprintf("kOS v0.6.3\n");
 	
 	GDT_Init();
 	IDT_Init();
@@ -107,6 +108,8 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	kprintf("[ok]\n");
 	
 	DumpPCIDeviceData();
+	
+	BGA_Init();
 	
 	return 0;
 }

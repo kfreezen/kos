@@ -2,8 +2,6 @@
 #include <print.h>
 #include <paging.h>
 
-#define HEAP_DEBUG
-
 extern UInt32 end;
 Pointer placement_address=&end;
 

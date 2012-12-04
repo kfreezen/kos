@@ -100,6 +100,7 @@ void addMemory(Heap* heap, UInt32 size) {
 	footer->header = header;
 }
 
+/*
 void InitKernelHeap() {
 	Heap* heap = kmalloc(sizeof(Heap));
 	
@@ -117,7 +118,7 @@ void InitKernelHeap() {
 	heap->flags = HEAP_EXTENDABLE;
 	
 	kHeap = heap;
-}
+}*/
 
 Heap* createHeap(UInt32 size) {
 	void* heapData;
@@ -146,7 +147,7 @@ HeapHeader* findFreeMemory(Heap* heap, UInt32 size) {
 	HeapHeader* smallestHoleThatFits=0;
 	unsigned smallestHoleSize=~0x0;
 	while(1) {
-		if((unsigned)header+sizeof(HeapHeader)>=heap->end || (unsigned)header->footer+sizeof(HeapFooter)>=heap->end) {
+		if((unsigned)header+sizeof(HeapHeader)>=heap->end || (unsigned)header->footer+sizeof(HeapFooter)>heap->end) {
 			break;
 		}
 
@@ -237,11 +238,19 @@ void* heap_alloc_ex(Heap* heap, UInt32 size, Bool pg_align) {
 			return (void*) newHeader+sizeof(HeapHeader);
 	} else if(block_size==size && (header->magic_flags&HEAP_FREE)==HEAP_FREE) {
 		header->magic_flags &= ~HEAP_FREE;
+		
+		#ifdef KHEAP_DEBUG
 		kprintf("rc0,%x,%x\n",size,block_size);
+		#endif
+		
 		return (void*) ((unsigned)header+sizeof(HeapHeader));
 	} else if(block_size>size && block_size<size+sizeof(HeapHeader)+sizeof(HeapFooter)) {
 		header->magic_flags &= ~HEAP_FREE;
+		
+		#ifdef KHEAP_DEBUG
 		kprintf("rc1\n");
+		#endif
+		
 		return (void*) ((unsigned)header+sizeof(HeapHeader));
 	} else {
 		HeapFooter* newFooter = (HeapFooter*)((unsigned)header+sizeof(HeapHeader)+size);
@@ -304,7 +313,10 @@ void heap_free(Heap* heap, void* pointer) {
 			// footer is destroyed.
 			// rightHeader is destroyed.
 			header->footer = rightHeader->footer;
-			kprintf("%x\n", header->footer);
+			
+			#ifdef KHEAP_DEBUG
+			kprintf("header->footer=%x\n", header->footer);
+			#endif
 			
 			header->footer->header = header;
 			rightHeader->magic_flags = HEAP_DESTROYED_MAGIC;
@@ -316,8 +328,10 @@ void heap_free(Heap* heap, void* pointer) {
 
 void setKernelHeap(Heap* heap) {
 	kHeap = heap;
-	kHeap->flags |= HEAP_EXTENDABLE;
+	
+	#ifdef OS_DEBUG
 	kprintf("KernelHeap=%x\n", kHeap);
+	#endif
 }
 
 Heap* getKernelHeap() {

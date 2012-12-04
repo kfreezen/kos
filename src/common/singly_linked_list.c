@@ -1,8 +1,5 @@
 #include <common/linkedlist.h>
-<<<<<<< HEAD
 #include <kheap.h>
-=======
->>>>>>> sounds
 
 void SLL_Add(SinglyLinkedList* list, SinglyLinkedNode* node) {
 	list->end->next = node;

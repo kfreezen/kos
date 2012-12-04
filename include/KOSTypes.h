@@ -47,6 +47,7 @@ int strcmp(const char* s1, const char* s2);
 int strncmp(const char* s1, size_t size, const char* s2);
 
 void outb(UInt16 port, UInt8 value);
+void outw(UInt16 port, UInt16 value);
 void outl(UInt16 port, UInt32 value);
 
 UInt8 inb(UInt16 port);

@@ -1,6 +1,8 @@
 ##### Backup files ######
 *.c~
 *.s~
+*~
+*.o
 
 ##### Other stuff
 kernel
