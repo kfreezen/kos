@@ -29,6 +29,18 @@ struct __DirEntry {
 	UInt32 fileSize;
 } __attribute__((packed));
 
+struct __LongFileNameEntry {
+	UInt8 order;
+	wchar_t first5[5];
+	UInt8 attribute;
+	UInt8 longEntryType;
+	UInt8 checksum;
+	wchar_t next6[6];
+	UInt16 zero;
+	wchar_t final2[2];
+} __attribute__((packed));
+
+typedef struct __LongFileNameEntry LongFileNameEntry;
 typedef struct __DirEntry DirEntry;
 typedef struct __Bpb Bpb;
 
@@ -42,7 +54,14 @@ typedef struct {
 	DirEntry data;
 } FAT12_File;
 
+typedef struct {
+	int length;
+	UInt8* buffer;
+} FileBuffer;
+
 UInt32 FAT12_Read_LL(FAT12_File* node, UInt32 off, UInt32 length, UInt8* buffer);
+FileBuffer FAT12_Read_FB(FAT12_File* node, UInt32 off, UInt32 length);
+
 FAT12_File* FAT12_GetFile(FAT12_Context* context, const char* file);
 
 struct __Bpb {

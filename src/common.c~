@@ -1,6 +1,8 @@
 #include <KOSTypes.h>
 
 void memset(Pointer p, UInt8 value, size_t size) {
+	kprintf("memset(%x,%x,%x)\n", p, value, size);
+	
 	Byte* b = (Byte*) p;
 	int i;
 	for(i=0; i<size; i++) {
@@ -10,6 +12,10 @@ void memset(Pointer p, UInt8 value, size_t size) {
 
 void outb(UInt16 port, UInt8 value) {
 	asm volatile("outb %1, %0" : : "dN" (port), "a" (value));
+}
+
+void outw(UInt16 port, UInt16 value) {
+	asm volatile("outw %1, %0" : : "dN" (port), "a" (value));
 }
 
 void outl(UInt16 port, UInt32 value) {

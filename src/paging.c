@@ -6,8 +6,10 @@
 //#define PAGING_DEBUG
 //#define PAGING_DEBUG_VERBOSE
 
+PageDirectory staticKPageDir __attribute__((aligned(0x1000)));
+
 Bitset* pages;
-PageDirectory* pageDir;
+PageDirectory* kernelPageDir = NULL;
 PageDirectory* currentPageDir;
 
 extern UInt32 placement_address;
@@ -37,7 +39,8 @@ UInt32 AllocPageBlock() {
 	UInt32 i;
 	for(i=0; i<pages->length; i++) {
 		if(!pages->bitData[i]) { // This is an entire free page block.
-			pages->bitData[i] = ~0;
+			pages->bitData[i] = ~1;
+			break;
 		}
 	}
 	
@@ -48,12 +51,14 @@ UInt32 AllocPageBlock() {
 	return i*32;
 }
 
-PageDirectory* CloneDirectory(PageDirectory* dir) {
+PageDirectory* CloneDirectory(PageDirectory* dir, int type) {
 	if(dir==NULL) {
 		dir = currentPageDir;
 	}
 	
 	UInt32 phys;
+	UInt32 pde_flags = (type==DIR_KERNEL_TASK) ? KERNEL_PDE_FLAGS : USER_PDE_FLAGS;
+	//UInt32 pte_flags = (type==DIR_KERNEL_TASK) ? KERNEL_PAGE_FLAGS : USER_PAGE_FLAGS;
 	
 	PageDirectory* newPageDir = kalloc_ex(sizeof(PageDirectory), true, &phys);
 	memset(newPageDir, 0, sizeof(PageDirectory));
@@ -68,13 +73,17 @@ PageDirectory* CloneDirectory(PageDirectory* dir) {
 			
 			if(dir->d[i]&PAGE_KERNEL) {
 				PageTable* newTable = (PageTable*) kalloc_ex(sizeof(PageTable), true, &phys);
-				newPageDir->d[i] = AssemblePDE(getPhysAddr(currentPageDir, newTable), dir->d[i]&0xFFF);
+				newPageDir->d[i] = AssemblePDE((UInt32)getPhysAddr(currentPageDir, newTable), pde_flags);
 				newPageDir->kd[i] = (UInt32) newTable;
 				
 				for(j=0; j<1024; j++) {
 					if(table->t[j]&PAGE_PRESENT && table->t[j]&PAGE_KERNEL) {
-						// Share.
-						newTable->t[j] = table->t[j];
+						if(table->t[j]&PAGE_STACK) {
+							// Don't share.
+						} else {
+							// Share.
+							newTable->t[j] = table->t[j];
+						}
 					}
 				}
 			} else {
@@ -90,7 +99,7 @@ PageDirectory* CloneDirectory(PageDirectory* dir) {
 		
 PageDirectoryEntry AssemblePDE(UInt32 addr, UInt32 flags) {
 	#ifdef PAGING_DEBUG_VERBOSE
-	kprintf("AssemblePDE(%x,%x) ", table, flags);
+	kprintf("AssemblePDE(%x,%x) ", addr, flags);
 	#endif
 	
 	if(addr&0xFFF) {
@@ -119,7 +128,7 @@ extern void switch_page_dir(void* ptr);
 
 void SwitchPageDirectory(PageDirectory* dir) {
 	currentPageDir = dir;
-	switch_page_dir(dir->d);
+	switch_page_dir((void*)dir->phys);
 }
 
 void InitPaging(int mem_kb) {
@@ -131,13 +140,16 @@ void InitPaging(int mem_kb) {
 	pages->length = pagesAmount/32;
 	
 	// Do 1 to 1 paging on everything up to placement_address.
-	pageDir = (PageDirectory*) kmalloc_ap(sizeof(PageDirectory), &phys);
-	memset(pageDir, 0, sizeof(PageDirectory));
+	kernelPageDir = (PageDirectory*) kmalloc_ap(sizeof(PageDirectory), &phys);
+	memset(kernelPageDir, 0, sizeof(PageDirectory));
 	
-	pageDir->d[1023] = (PageDirectoryEntry) pageDir->d;
-	pageDir->phys = phys;
+	kernelPageDir->d[1023] = (PageDirectoryEntry) kernelPageDir->d;
+	kernelPageDir->phys = phys;
+	kernelPageDir->dirType = DIR_KERNEL_TASK;
 	
-	kprintf("pages->bitData=%x\n", pages->bitData);
+	#ifdef PAGING_DEBUG
+	kprintf("pages=%x\npageDir=%x\n", pages, kernelPageDir);
+	#endif
 	
 	memset(pages->bitData, 0, pages->length);
 	
@@ -162,10 +174,9 @@ void InitPaging(int mem_kb) {
 	
 	int totalPageTables = pageTablesAmount+extraPageTables;
 	
-	int i;
+	int i,j;
 	for(i=0; i<totalPageTables; i++) {
 		PageTable* table = (PageTable*) kmalloc_ap(sizeof(PageTable), &phys);
-		int j;
 		
 		memset(table, 0, sizeof(PageTable));
 		
@@ -184,8 +195,8 @@ void InitPaging(int mem_kb) {
 			}
 		}
 		
-		pageDir->d[i] = AssemblePDE(phys, KERNEL_PDE_FLAGS);
-		pageDir->kd[i] = table;
+		kernelPageDir->d[i] = AssemblePDE(phys, KERNEL_PDE_FLAGS);
+		kernelPageDir->kd[i] = (UInt32) table;
 		
 		if(j<1024) {
 			#ifdef PAGING_DEBUG
@@ -199,13 +210,17 @@ void InitPaging(int mem_kb) {
 		#endif
 	}
 	
-	for(i=0; i<pageTablesAmount+extraPageTables*1024/32; i++) {
-		pages->bitData[i] = ~0;
+	int k;
+	for(k=0; k<(i*1024+j)/32; k++) {
+		pages->bitData[k] = ~0;
 	}
+	
+	UInt32 used = (2<<(j&0x1F))-1;
+	pages->bitData[k] = used;
 	
 	// On real hardware there will be memory holes.  That is why we need a map of memory that is available to the CPU so we can mark the memory holes as used. TODO Obtain a memory map and use it to mark physical pages as used if there is a memory hole on those pages.
 	
-	SwitchPageDirectory(pageDir);
+	SwitchPageDirectory(kernelPageDir);
 }
 
 PageTable* createNewPageTable(PageDirectory* dir, void* virtualAddr) {
@@ -226,6 +241,7 @@ PageTable* createNewPageTable(PageDirectory* dir, void* virtualAddr) {
 	#endif
 	
 	int pdindex = ((unsigned)virtualAddr)>>22;
+	memset(table, 0, sizeof(PageTable));
 	
 	#ifdef PAGING_DEBUG
 	kprintf("pdindex=%x ", pdindex);
@@ -237,7 +253,7 @@ PageTable* createNewPageTable(PageDirectory* dir, void* virtualAddr) {
 	}
 	
 	dir->d[pdindex] = AssemblePDE(phys, KERNEL_PDE_FLAGS);	
-	dir->kd[pdindex] = table;
+	dir->kd[pdindex] = (UInt32) table;
 	
 	#ifdef PAGING_DEBUG
 	kprintf("ret %x\n", table);
@@ -247,13 +263,17 @@ PageTable* createNewPageTable(PageDirectory* dir, void* virtualAddr) {
 	return table;
 }
 
-int MapAllocatedPageBlockTo(PageDirectory* dir, void* virtualAddr) {
+int MapAllocatedPageBlockTo(PageDirectory* dir, void* virtualAddr, int flags) {
 	#ifdef PAGING_DEBUG
 	kprintf("MapAllocatedPageBlockTo(%x, %x)\n", dir, virtualAddr);
 	#endif
 	
 	if(dir==NULL) {
 		dir = currentPageDir;
+	}
+	
+	if(!flags) {
+		flags = KERNEL_PAGE_FLAGS;
 	}
 	
 	if((unsigned)virtualAddr&0xFFF) {
@@ -271,7 +291,7 @@ int MapAllocatedPageBlockTo(PageDirectory* dir, void* virtualAddr) {
 		createNewPageTable(dir, virtualAddr);
 	}
 	
-	PageTable* table = (PageTable*) (dir->d[pd_index]&0xFFFFF000);
+	PageTable* table = (PageTable*) (dir->kd[pd_index]&0xFFFFF000);
 	
 	// Now make sure that all are empty.
 	int i;
@@ -305,7 +325,7 @@ int MapAllocatedPageBlockTo(PageDirectory* dir, void* virtualAddr) {
 		if(pt_index+i>=1024) {
 			break;
 		}
-		table->t[pt_index+i] = AssemblePTE((void*)((page+i)<<12), KERNEL_PAGE_FLAGS);
+		table->t[pt_index+i] = AssemblePTE((void*)((page+i)<<12), flags);
 		_invlpg(virtualAddr+((page+i)<<12));
 	}
 	
@@ -321,7 +341,7 @@ int MapAllocatedPageBlockTo(PageDirectory* dir, void* virtualAddr) {
 		int j;
 		table = (PageTable*) (dir->d[pd_index+1]&0xFFFFF000);
 		for(j=0; j<(32-i); j++) {
-			table->t[pt_index+i] = AssemblePTE((void*)((page+i)<<12), KERNEL_PAGE_FLAGS);
+			table->t[pt_index+i] = AssemblePTE((void*)((page+i)<<12), flags);
 			_invlpg(virtualAddr);
 		}
 	}
@@ -341,13 +361,16 @@ void* getPhysAddr(PageDirectory* dir, void* virt) {
 	return (void*)((unsigned)table->t[ptindex] & 0xFFFFF000);
 }
 
-int MapAllocatedPageTo(PageDirectory* dir, void* virtualAddr) {
+int MapAllocatedPageTo(PageDirectory* dir, void* virtualAddr, int flags) {
 	#ifdef PAGING_DEBUG
 	kprintf("MapAllocatedPageTo(%x, %x)\n", dir, virtualAddr);
 	#endif
 	
 	if(dir==NULL) {
 		dir = currentPageDir;
+	}
+	if(!flags) {
+		flags = KERNEL_PAGE_FLAGS;
 	}
 	
 	if((unsigned)virtualAddr&0xFFF) {
@@ -362,7 +385,7 @@ int MapAllocatedPageTo(PageDirectory* dir, void* virtualAddr) {
 		//kprintf("Error:  Adding page table not supported (yet).");
 	}
 	
-	PageTable* table = (PageTable*) (dir->d[pd_index]&0xFFFFF000);
+	PageTable* table = (PageTable*) (dir->kd[pd_index]&0xFFFFF000);
 	if(table->t[pt_index]&PAGE_PRESENT) {
 		// You should know better than to try mapping something to an already present page.
 		kprintf("ERROR:  Page is already mapped.\n");
@@ -371,7 +394,7 @@ int MapAllocatedPageTo(PageDirectory* dir, void* virtualAddr) {
 		UInt32 physAddr = AllocPage()<<12;
 		//kprintf("physAddr=%x\n", physAddr);
 		
-		table->t[pt_index] = AssemblePTE((void*)physAddr, KERNEL_PAGE_FLAGS);
+		table->t[pt_index] = AssemblePTE((void*)physAddr, flags);
 		_invlpg(virtualAddr);
 	}
 	

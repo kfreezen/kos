@@ -24,6 +24,12 @@
 		jmp irq_common_stub
 %endmacro
 
+[global double_fault_isr8]
+double_fault_isr8:
+	cli
+	push byte 8
+	jmp isr_common_stub
+
 ISR_NOERR 0
 ISR_NOERR 1
 ISR_NOERR 2
@@ -73,14 +79,7 @@ IRQ 13, 45
 IRQ 14, 46
 IRQ 15, 47
 
-%macro ISR_NOERR 1
-	[GLOBAL isr%1]
-	isr%1:
-		cli
-		push byte 0
-		push byte %1
-		jmp isr_common_stub
-%endmacro
+ISR_NOERR 71
 
 [GLOBAL sys70]
 sys70:
@@ -92,11 +91,13 @@ sys70:
 
 [GLOBAL _syscall]
 _syscall:
-	mov eax, [esp+4]
-	mov ebx, [esp+8]
-	mov ecx, [esp+12]
-	mov edx, [esp+16]
+	push ebx
+	mov eax, [esp+8]
+	mov ebx, [esp+12]
+	mov ecx, [esp+16]
+	mov edx, [esp+20]
 	int 70
+	pop ebx
 	ret
 [EXTERN isr_handler]
 [EXTERN irq_handler]
@@ -137,17 +138,19 @@ isr_common_stub:
 	
 	call isr_handler
 	
-	pop eax
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov gs, ax
+	pop ebx
+	mov ds, bx
+	mov es, bx
+	mov fs, bx
+	mov gs, bx
 	
 	popa
 	add esp, 8
 	sti
 	iret
 	
+[global new_task_entry]
+
 irq_common_stub:
 	pusha
 	
@@ -162,6 +165,7 @@ irq_common_stub:
 	
 	call irq_handler
 	
+	new_task_entry:
 	pop ebx
 	mov ds, bx
 	mov es, bx

@@ -80,11 +80,22 @@ _rdtsc:
 [extern interval_c]
 [extern pithook]
 [extern mstime]
+[extern current_task]
 [extern __rdtsc]
 [extern last_rdtsc]
+[extern TaskSwitch]
 
 timer_callback:
 	push esi
+	
+	mov eax, [current_task]
+	
+	or eax, eax
+	jz .noSwitch
+	
+	call TaskSwitch
+	
+	.noSwitch:
 	
 	xor eax, eax
 	xor edx, edx

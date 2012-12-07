@@ -13,7 +13,7 @@ typedef struct registers {
 } Registers;
 
 typedef void (*IntHandler)(Registers regs);
-typedef void (*Syscall)(Registers regs);
+typedef void (*Syscall)(Registers* regs);
 
 void registerIntHandler(int interrupt, IntHandler h);
 void registerSyscall(int eax, Syscall s);
@@ -37,6 +37,10 @@ int ISR_Init();
 #define IRQ14 46
 #define IRQ15 47
 
-#define SYSCALL_PUTSTRING 0x0
+#define SYSCALL_CONSOLE 0x0
+	#define CONSOLE_PUTS 0x0
+	#define CONSOLE_PUTCH 0x1
+#define SYSCALL_KB 0x1
+	#define KB_POLLCH 0x0
 
 #endif

@@ -76,7 +76,10 @@ int FloppyInit() {
 	
 	send_command(VERSION_CMD);
 	UInt8 version = read_data();
+	
+	#ifdef FLOPPY_DEBUG
 	kprintf("FloppyVersion=%x\n", version);
+	#endif
 	
 	if(version!=0x90) {
 		return -1;
@@ -211,7 +214,9 @@ int FDC_Seek(UInt32 cyl, UInt32 head) {
 		send_command((head)<<2 | currentDrive);
 		send_command(cyl);
 
+		#ifdef FLOPPY_DEBUG
 		kprintf("FDC_WAITIRQ\n");
+		#endif
 		
 		FDC_WaitIRQ();
 		FDC_SenseInterrupt(&st0, &cyl0);
@@ -272,7 +277,7 @@ void FDC_ReadSectorInternal(UInt8 head, UInt8 track, UInt8 sector) {
 
 int FloppyReadSectorNoAlloc(int lba, void* buffer) {
 	if(currentDrive>=4) {
-		return;
+		return -1;
 	}
 	
 	int head=0, track=0, sector=1;
@@ -280,13 +285,15 @@ int FloppyReadSectorNoAlloc(int lba, void* buffer) {
 	
 	FDC_ControlMotor(currentDrive, TRUE);
 	if(FDC_Seek(track, head)!=0) {
-		return;
+		return -1;
 	}
 
 	FDC_ReadSectorInternal(head, track, sector);
 	FDC_ControlMotor(currentDrive, FALSE);
 	
 	memcpy(buffer, DMA_BUFFER, FloppyGetDevice()->sectorSize);
+	
+	return 0;
 }
 
 UInt8* FloppyReadSector(int sectorLBA) {

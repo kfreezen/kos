@@ -25,6 +25,7 @@ typedef short Short;
 typedef short Int16;
 typedef unsigned short UInt16;
 typedef UInt16 UShort;
+typedef short wchar_t;
 
 typedef unsigned char Byte;
 typedef char Int8;

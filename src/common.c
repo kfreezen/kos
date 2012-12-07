@@ -1,6 +1,8 @@
 #include <KOSTypes.h>
 
 void memset(Pointer p, UInt8 value, size_t size) {
+	//kprintf("memset(%x,%x,%x)\n", p, value, size);
+	
 	Byte* b = (Byte*) p;
 	int i;
 	for(i=0; i<size; i++) {

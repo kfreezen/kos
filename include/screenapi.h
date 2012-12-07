@@ -9,9 +9,13 @@
 #define ERROR_NOT_INITIALIZED 3
 #define TOP_ERROR 3
 
+#define HI_RES 1
+#define LO_RES 0
+
 #define DEFAULT_COLOR_ATTRIBUTE 0x07
 
 int CLI_Init();
+void CLI_SetTextMode();
 
 int PrintChar(Char c);
 int PrintString(String s);

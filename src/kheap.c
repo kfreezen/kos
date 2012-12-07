@@ -2,6 +2,8 @@
 #include <print.h>
 #include <paging.h>
 
+//#define KHEAP_DEBUG
+
 extern UInt32 end;
 Pointer placement_address=&end;
 
@@ -77,6 +79,10 @@ Pointer kalloc_ex(UInt32 size, Bool pg_align, UInt32* phys) {
 }
 
 void addMemory(Heap* heap, UInt32 size) {
+	#ifdef KHEAP_DEBUG
+	kprintf("addMemory(%x,%x)\n", heap,size);
+	#endif
+	
 	if(heap->flags&HEAP_EXTENDABLE) {
 		if(size&(HEAP_ADD_AMOUNT-1)) {
 			size = (size&~(HEAP_ADD_AMOUNT-1)) + HEAP_ADD_AMOUNT;
@@ -88,21 +94,27 @@ void addMemory(Heap* heap, UInt32 size) {
 	
 	int i;
 	for(i=0; i<size/HEAP_ADD_AMOUNT; i++) {
-		MapAllocatedPageBlockTo(NULL, heap->end+(i*HEAP_ADD_AMOUNT));
+		MapAllocatedPageBlockTo(NULL, heap->end+(i*HEAP_ADD_AMOUNT), KERNEL_PAGE_FLAGS);
 	}
 	HeapHeader* header = (HeapHeader*) heap->end;
-	heap->end = heap->end+((i-1)*HEAP_ADD_AMOUNT);
+	
+	heap->end = heap->end+(i*HEAP_ADD_AMOUNT);
 	HeapFooter* footer = (HeapFooter*) ((void*)heap->end-sizeof(HeapFooter));
+	
+	#ifdef KHEAP_DEBUG
+	kprintf("addMemory():footer = %x, heap->end=%x\n", footer, heap->end);
+	#endif
+	
 	header->magic_flags = HEAP_MAGIC | HEAP_FREE;
-	header->footer = footer;
+	header->footer = heap->end-sizeof(HeapFooter);
 	footer->header = header;
 }
 
-/*
+
 void InitKernelHeap() {
 	Heap* heap = kmalloc(sizeof(Heap));
 	
-	MapAllocatedPageBlockTo(NULL, (void*)0xC0000000);
+	MapAllocatedPageBlockTo(NULL, (void*)0xC0000000, KERNEL_PAGE_FLAGS);
 	void* heapData = (void*)0xC0000000;
 	
 	memset(heapData, 0, HEAP_ADD_AMOUNT);
@@ -116,7 +128,12 @@ void InitKernelHeap() {
 	heap->flags = HEAP_EXTENDABLE;
 	
 	kHeap = heap;
-}*/
+	
+	#ifdef KHEAP_DEBUG
+	kprintf("kheap=%x\n", kHeap->start);
+	#endif
+	
+}
 
 Heap* createHeap(UInt32 size) {
 	void* heapData;
@@ -145,7 +162,7 @@ HeapHeader* findFreeMemory(Heap* heap, UInt32 size) {
 	HeapHeader* smallestHoleThatFits=0;
 	unsigned smallestHoleSize=~0x0;
 	while(1) {
-		if((unsigned)header+sizeof(HeapHeader)>=heap->end || (unsigned)header->footer+sizeof(HeapFooter)>heap->end) {
+		if((unsigned)header+sizeof(HeapHeader)>=(unsigned)heap->end || (unsigned)header->footer+sizeof(HeapFooter)>(unsigned)heap->end) {
 			break;
 		}
 
@@ -196,6 +213,10 @@ void* heap_alloc(Heap* heap, UInt32 size) {
 }
 
 void* heap_alloc_ex(Heap* heap, UInt32 size, Bool pg_align) {
+	#ifdef KHEAP_DEBUG
+	kprintf("heap_alloc_ex(%x,%x,%x)\n", heap, size, pg_align);
+	#endif
+	
 	// Round up to a 4-byte alignment.
 	if(size&0x3) {
 		size = (size&~3)+4;

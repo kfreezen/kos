@@ -2,6 +2,7 @@
 #define PRINT_H
 
 #include <KOSTypes.h>
+#include <screenapi.h>
 
 int PutChar(Char c);
 int PutCharEx(Char c, Bool str_use);

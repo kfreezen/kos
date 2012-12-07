@@ -28,7 +28,12 @@ int IDT_Init() {
 	idt[5 ] = FillIdtEntry(0x08, (UInt32)&isr5 , 0x8E);
 	idt[6 ] = FillIdtEntry(0x08, (UInt32)&isr6 , 0x8E);
 	idt[7 ] = FillIdtEntry(0x08, (UInt32)&isr7 , 0x8E);
-	idt[8 ] = FillIdtEntry(0x08, (UInt32)&isr8 , 0x8E);
+	idt[8 ] = FillIdtEntry(0x28, (UInt32)0     , 0x8E);
+	//idt[8].offset_low = ((UInt32)&isr8) & 0xFFFF;
+	//idt[8].offset_high = ((UInt32)&isr8) >> 16;
+	//idt[8].zero = 0;
+	//idt[8].type_attr = 0x85;
+	//idt[8].sel = 0x28;
 	idt[9 ] = FillIdtEntry(0x08, (UInt32)&isr9 , 0x8E);
 	idt[10] = FillIdtEntry(0x08, (UInt32)&isr10, 0x8E);
 	idt[11] = FillIdtEntry(0x08, (UInt32)&isr11, 0x8E);

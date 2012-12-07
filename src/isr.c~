@@ -11,6 +11,8 @@ Bool isr_isInit = false;
 extern IntHandler int_handlers[256];
 Syscall syscalls[512];
 
+extern void kb_syscall(Registers regs);
+
 static void double_fault_handler(Registers regs) { // int 8
 	ClsEx(BSOD_ATTR);
 	kprintf("DOUBLE FAULT:  saved eip=%x\n", regs.eip);
@@ -80,12 +82,12 @@ static void invalid_opcode_handler(Registers regs) {
 }
 
 static void page_fault_handler(Registers regs) {
-	ClsEx(BSOD_ATTR);
+	//ClsEx(BSOD_ATTR);
 	
 	UInt32 cr2;
 	asm volatile( "mov %%cr2, %0" : "=r"(cr2) );
 	
-	kprintf("PAGE_FAULT:  errCode=%x, address=%x\n", regs.err_code, cr2);
+	kprintf("PAGE_FAULT:  eip=%x, errCode=%x, address=%x\n", regs.eip, regs.err_code, cr2);
 	
 	for(;;);
 }
@@ -98,9 +100,15 @@ static void null_kb_handler(Registers regs) {
 
 }
 
-static void syscall_puts(Registers regs) {
-	String s = (String) regs.ebx;
-	PutString(s);
+static void syscall_console(Registers regs) {
+	switch(regs.ebx) {
+		case CONSOLE_PUTS:
+			PutString((char*)regs.ecx);
+			break;
+		case CONSOLE_PUTCH:
+			PutChar(regs.ecx);
+			break;
+	}
 }
 
 int ISR_Init() {
@@ -128,7 +136,9 @@ int ISR_Init() {
 	
 	registerIntHandler(71, checkpoint_handler);
 	
-	registerSyscall(SYSCALL_PUTSTRING, syscall_puts);
+	registerSyscall(SYSCALL_CONSOLE, syscall_console);
+	registerSyscall(SYSCALL_KB, kb_syscall);
+	
 	isr_isInit = true;
 	return 0;
 }
@@ -161,7 +171,7 @@ void isr_handler(Registers regs) {
 void syscall_handler(Registers regs) {
 	if(syscalls[regs.eax] != 0) {
 		Syscall syscall = syscalls[regs.eax];
-		syscall(regs);
+		syscall(&regs);
 	} else {
 		kprintf("Received invalid syscall request:  %d\n", regs.eax);
 	}

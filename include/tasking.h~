@@ -1,7 +1,25 @@
 #ifndef TASKING_H
 #define TASKING_H
 
+#include <KOSTypes.h>
+#include <paging.h>
+
+struct Task;
+
+typedef struct Task {
+	int id;
+	UInt32 esp, ebp;
+	UInt32 eip;
+	PageDirectory* dir;
+	struct Task* next;
+} Task;
+
 void InitTasking();
 
+void TaskSwitch();
+
+int CreateTask(UInt32 start);
+
+int GetPID();
 
 #endif

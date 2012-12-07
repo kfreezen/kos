@@ -14,6 +14,7 @@ MBOOT_CHECKSUM      equ -(MBOOT_HEADER_MAGIC + MBOOT_HEADER_FLAGS)
 [EXTERN bss]                    ; Start of the .bss section.
 [EXTERN end]                    ; End of the last loadable section.
 
+section .mbHeader
 align 8
 mboot:
   dd  MBOOT_HEADER_MAGIC        ; GRUB will search for this value on each
@@ -39,7 +40,8 @@ mov_eax:
 	ret
 
 _invlpg:
-	invlpg [esp+4]
+	mov eax, [esp+4]
+	invlpg [eax]
 	ret
 
 full_invlpg:
@@ -80,9 +82,19 @@ _rdtsc:
 [extern mstime]
 [extern __rdtsc]
 [extern last_rdtsc]
+[extern TaskSwitch]
 
 timer_callback:
 	push esi
+	
+	mov eax, [current_task]
+	
+	or eax, eax
+	jz .noSwitch
+	
+	call TaskSwitch
+	
+	.noSwitch:
 	
 	xor eax, eax
 	xor edx, edx

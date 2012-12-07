@@ -76,9 +76,13 @@ int FloppyInit() {
 	
 	send_command(VERSION_CMD);
 	UInt8 version = read_data();
+	
+	#ifdef FLOPPY_DEBUG
 	kprintf("FloppyVersion=%x\n", version);
+	#endif
 	
 	if(version!=0x90) {
+		kprintf("FloppyVersion != 0x90.  FloppyVersion == %x\n", version);
 		return -1;
 	}
 	
@@ -211,7 +215,9 @@ int FDC_Seek(UInt32 cyl, UInt32 head) {
 		send_command((head)<<2 | currentDrive);
 		send_command(cyl);
 
+		#ifdef FLOPPY_DEBUG
 		kprintf("FDC_WAITIRQ\n");
+		#endif
 		
 		FDC_WaitIRQ();
 		FDC_SenseInterrupt(&st0, &cyl0);

@@ -1,6 +1,8 @@
 #include <screenapi.h>
 
-#define VIDMEM 0xB8000
+#include <vga.h>
+
+UInt32 framebuffer = 0x0;
 
 const Int32 DEFAULT_WIDTH = 80;
 const Int32 DEFAULT_HEIGHT = 25;
@@ -17,6 +19,15 @@ inline void SetError(Error e) { error = e; }
 
 inline Int32 Coor(int x, int y) {
 	return (x+(y*w));
+}
+
+void CLI_SetTextMode(int hi_res) {
+	set_text_mode(hi_res);
+	
+	w = (hi_res) ? 90 : 80;
+	h = (hi_res) ? 60 : 25;
+	framebuffer = get_fb_loc();
+	vidmem = framebuffer;
 }
 
 void SetColorAttribute(UInt8 c) {
@@ -51,12 +62,11 @@ int CLI_Init() { // TODO:  Figure out a way in which to find the width and heigh
 		return 1;
 	} else {
 		color = DEFAULT_COLOR_ATTRIBUTE;
-		vidmem = (Byte*) VIDMEM;
+		vidmem = (Byte*) framebuffer;
 		isInit = true;
 		
 		ClearError();
-		w = DEFAULT_WIDTH;
-		h = DEFAULT_HEIGHT;
+		CLI_SetTextMode(HI_RES);
 	}
 	
 	return 0;

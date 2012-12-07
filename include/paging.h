@@ -4,6 +4,9 @@
 #include <KOSTypes.h>
 #include <print.h>
 
+#define DIR_KERNEL_TASK 0
+#define DIR_OTHER_TASK 1
+
 typedef UInt32 PageDirectoryEntry;
 typedef UInt32 PageTableEntry;
 
@@ -11,6 +14,7 @@ typedef struct __page_dir {
 	PageDirectoryEntry d[1024];
 	PageDirectoryEntry kd[1024]; // All the addresses as seen by the kernel. (physical or virtual?)
 	UInt32 phys;
+	Int32 dirType;
 } PageDirectory;
 
 typedef struct __page_table {
@@ -24,12 +28,12 @@ inline Pointer getPhysAddr(PageDirectory* dir, Pointer virt);
 
 void SwitchPageDirectory(PageDirectory* dir);
 
-PageDirectory* CloneDirectory(PageDirectory* src);
+PageDirectory* CloneDirectory(PageDirectory* src, int type);
 PageDirectory* CreateNewAddressSpace(PageDirectory* krnl);
 
 void InitPaging(int mem_kb);
-inline int MapAllocatedPageTo(PageDirectory* dir, void* virtAddr);
-inline int MapAllocatedPageBlockTo(PageDirectory* dir, void* virtAddr);
+int MapAllocatedPageTo(PageDirectory* dir, void* virtAddr, int flags);
+int MapAllocatedPageBlockTo(PageDirectory* dir, void* virtAddr, int flags);
 #define PAGE_DIR_SIZE (sizeof(PageDirectoryEntry)*1024)
 #define PAGE_TABLE_SIZE (sizeof(PageTableEntry)*1024)
 
@@ -49,8 +53,12 @@ inline int MapAllocatedPageBlockTo(PageDirectory* dir, void* virtAddr);
 #define PAGE_AVAILABLE_BIT2 1<<11
 
 #define PAGE_KERNEL PAGE_AVAILABLE_BIT0
+#define PAGE_USER 0
+#define PAGE_STACK PAGE_AVAILABLE_BIT1
 
 #define KERNEL_PDE_FLAGS READ_WRITE_PAGE | PRESENT
 #define KERNEL_PAGE_FLAGS PAGE_KERNEL | READ_WRITE_PAGE | PRESENT
 
+#define USER_PDE_FLAGS READ_WRITE_PAGE | PRESENT
+#define USER_PAGE_FLAGS READ_WRITE_PAGE | PAGE_USER | PRESENT
 #endif

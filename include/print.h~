@@ -2,6 +2,7 @@
 #define PRINT_H
 
 #include <KOSTypes.h>
+#include <screenapi.h>
 
 int PutChar(Char c);
 int PutCharEx(Char c, Bool str_use);
@@ -19,6 +20,8 @@ void PutFloat(float n);
 void kprintf(const char* fmt, ...);
 
 void Cls();
-void ClsEx(int color);
+void ClsEx(UInt8 color);
 
+#define HI_RES 1
+#define LO_RES 0
 #endif

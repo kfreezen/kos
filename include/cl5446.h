@@ -1,0 +1,7 @@
+#ifndef CL5446_H
+#define CL5446_H
+
+#define CL5446_PCI_DEVICEID 0xB8
+#define CIRRUS_LOGIC_VENDOR_ID 0x1013
+
+#endif

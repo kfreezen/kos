@@ -22,6 +22,7 @@
 #include <paging.h>
 #include <pci.h>
 #include <cl5446.h>
+#include <tasking.h>
 
 #define PIT_MSTIME 20
 
@@ -41,6 +42,17 @@ Byte iKernel[2048];
 Byte iKernelOut[2048];
 
 typedef void (*function)();
+
+typedef struct EXE_Header {
+	UInt32 magic;
+	UInt32 loc;
+	UInt32 loc_start;
+	UInt32 loc_data;
+} EXE_Header;
+
+void thread1();
+void thread2();
+void thread(char c);
 
 int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	initial_esp = initial_stack;
@@ -73,35 +85,15 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	
 	PIT_Init(PIT_MSTIME);
 	
-	/*
-	fs_node_t* krnl_file = open_file(fs_root, "oskrnl.bin");
-	
-	UInt32 sz = read_fs(krnl_file, 0, 2048, iKernel);
-	*/
-	
-	/*
-	jit_compile(iKernel, iKernelOut);
-	function func = iKernelOut;
-	func();*/
-	
 	init_kheap();
+	InitPaging((mboot_hdr->mem_lower+mboot_hdr->mem_upper)&~3);
+	InitKernelHeap();
 	
-	setKernelHeap(createHeap(0x80000));
+	//setKernelHeap(createHeap(0x80000));
 	
-	/*
+	//asm volatile("int $8");
 	
 	FloppyInit();
-	
-	FAT12_Context* context = FAT12_GetContext(FloppyGetDevice());
-	FAT12_File* file = FAT12_GetFile(context, "HLOWRLD BIN");
-	UInt8* buf = (UInt8*) kalloc(512);
-	FAT12_Read_LL(file, 0, 0, buf);
-	memcpy((void*)0x500, buf, 512);
-	
-	kprintf("buf=%x\n", buf);
-	function f = (function) 0x500;
-	f();
-	*/
 	
 	kprintf("Scanning PCI Devices... ");
 	checkAllBuses();
@@ -109,20 +101,35 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	
 	DumpPCIDeviceData();
 	
-	CL5446_Init();
+	kprintf("Keyboard Init... ");
+//	KB_Init(1);
+	kprintf("[ok]\n");
+	
+	InitTasking();
+	
+	CreateTask(thread1);
+	//CreateTask(thread2);
+	thread('a');
 	
 	return 0;
 }
-/*
-void thread0() {
-	kprintf("thread0!\n");
-	Thread_Yield();
-}
 
 void thread1() {
-	kprintf("thread1!\n");
-	Thread_Yield();
-}*/
+	thread('b');
+}
+
+void thread2() {
+	thread('c');
+}
+
+void thread(char c) {
+	int j;
+	for(j=0;;j++) {
+		if(!(j%8000)) {
+			kprintf("%c", c);
+		}
+	}
+}
 
 #else
 #include <KOSTypes.h>

@@ -24,6 +24,12 @@
 		jmp irq_common_stub
 %endmacro
 
+;[global double_fault_isr8]
+;double_fault_isr8:
+;	cli
+;	push byte 8
+;	jmp isr_common_stub
+
 ISR_NOERR 0
 ISR_NOERR 1
 ISR_NOERR 2
@@ -132,17 +138,19 @@ isr_common_stub:
 	
 	call isr_handler
 	
-	pop eax
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov gs, ax
+	pop ebx
+	mov ds, bx
+	mov es, bx
+	mov fs, bx
+	mov gs, bx
 	
 	popa
 	add esp, 8
 	sti
 	iret
 	
+[global new_task_entry]
+
 irq_common_stub:
 	pusha
 	
@@ -157,6 +165,7 @@ irq_common_stub:
 	
 	call irq_handler
 	
+	new_task_entry:
 	pop ebx
 	mov ds, bx
 	mov es, bx
