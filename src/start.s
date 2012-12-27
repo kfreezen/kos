@@ -84,6 +84,7 @@ _rdtsc:
 [extern __rdtsc]
 [extern last_rdtsc]
 [extern TaskSwitch]
+[extern FloppyMotorCallback]
 
 timer_callback:
 	push esi
@@ -96,6 +97,7 @@ timer_callback:
 	call TaskSwitch
 	
 	.noSwitch:
+	call FloppyMotorCallback
 	
 	xor eax, eax
 	xor edx, edx

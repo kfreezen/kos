@@ -21,8 +21,11 @@
 #include <fat12.h>
 #include <paging.h>
 #include <pci.h>
-#include <cl5446.h>
 #include <tasking.h>
+#include <elf.h>
+#include <graphics.h>
+#include <cli_ui.h>
+#include <error.h>
 
 #define PIT_MSTIME 20
 
@@ -58,13 +61,9 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	initial_esp = initial_stack;
 	
 	CLI_Init();
-	ClearScreen();
-	//PutString("kOS v0.5.2\n");
+	Cls();
 	
-	if(mboot->mods_count==0) {
-		kprintf("ERROR:  No Initrd\n");
-		for(;;);
-	}
+	//PutString("kOS v0.5.2\n");
 	
 	UInt32 initrd_end = *(UInt32*)(mboot->mods_addr+4);
 	
@@ -102,16 +101,39 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	DumpPCIDeviceData();
 	
 	kprintf("Keyboard Init... ");
-//	KB_Init(1);
+	KB_Init(1);
 	kprintf("[ok]\n");
+	
+	DoRetryTest();
 	
 	InitTasking();
 	
-	CreateTask(thread1);
-	//CreateTask(thread2);
-	thread('a');
+	FAT12_Context* context = FAT12_GetContext(FloppyGetDevice());
+	FAT12_File* file = FAT12_GetFile(context, "helloworld");
+	FileBuffer fileBuf = FAT12_Read_FB(file, 0,0);
+	
+	kprintf("fileBuf.buffer=%x\n", fileBuf.buffer);
+	
+	ELF* elf = Parse_ELF(fileBuf.buffer);
+	
+	if(elf->error) {
+		kprintf("ELF Parse error:  %s\n", GetElfErrors()[elf->error]);
+	}
+	//CreateTask(elf->start, elf->dir);
+	
+	kprintf("Kernel init done...\n");
 	
 	return 0;
+}
+
+int drt_i = 0;
+void DoRetryTest() {
+	drt_i ++;
+	if(!(drt_i%600)) {
+		kprintf("Oh hai.\n");
+	}
+	
+	DoRetry(DoRetryTest);
 }
 
 void thread1() {

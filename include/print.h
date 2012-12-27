@@ -10,7 +10,7 @@ int PutCharEx(Char c, Bool str_use);
 int PutStringEx(String s, Bool no_move_csr);
 int PutString(String s);
 
-void PutHexEx(UInt32 num, Bool noZeroes);
+void PutHexEx(UInt32 num, Bool noZeroes, Bool hexIdent);
 void PutHex(UInt32 num);
 
 void PutDec(UInt32 num);

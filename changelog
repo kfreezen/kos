@@ -1,15 +1,7 @@
-kOS v0.2.3:
-	Made some optimization changes to SetBits in order to decrease the boot time.  Reduced Paging_Init() time from 6 sec to 140 ms.
-kOS v0.2.4:
-	Made some more optimizations to SetBits in order to decrease the boot time.  Reduced Paging_Init() time from 140 ms to 60 ms.
-kOS v0.2.5:
-	Got non-1:1 mapping to work.
-	
 Goals for v0.6.3:
 	Read sector from floppy.
 Goals for v0.6.4:
 	FAT Filesystem driver.
 	Read file from floppy.
-Goals for v0.6.5:
-	Write sector to floppy.
-	Write file to floppy.
+Goals for v0.7.0:
+	Internal debugger.

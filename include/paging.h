@@ -34,6 +34,12 @@ PageDirectory* CreateNewAddressSpace(PageDirectory* krnl);
 void InitPaging(int mem_kb);
 int MapAllocatedPageTo(PageDirectory* dir, void* virtAddr, int flags);
 int MapAllocatedPageBlockTo(PageDirectory* dir, void* virtAddr, int flags);
+
+void UnmapPageFrom(PageDirectory* dir, void* addr);
+
+void FreePage(UInt32 page);
+void FreeAllUserPages(PageDirectory* dir);
+
 #define PAGE_DIR_SIZE (sizeof(PageDirectoryEntry)*1024)
 #define PAGE_TABLE_SIZE (sizeof(PageTableEntry)*1024)
 
@@ -56,9 +62,10 @@ int MapAllocatedPageBlockTo(PageDirectory* dir, void* virtAddr, int flags);
 #define PAGE_USER 0
 #define PAGE_STACK PAGE_AVAILABLE_BIT1
 
-#define KERNEL_PDE_FLAGS READ_WRITE_PAGE | PRESENT
-#define KERNEL_PAGE_FLAGS PAGE_KERNEL | READ_WRITE_PAGE | PRESENT
+#define KERNEL_PDE_FLAGS READ_WRITE_PAGE | PAGE_PRESENT
+#define KERNEL_PAGE_FLAGS PAGE_KERNEL | READ_WRITE_PAGE | PAGE_PRESENT
 
-#define USER_PDE_FLAGS READ_WRITE_PAGE | PRESENT
-#define USER_PAGE_FLAGS READ_WRITE_PAGE | PAGE_USER | PRESENT
+#define USER_PDE_FLAGS READ_WRITE_PAGE | PAGE_PRESENT
+#define USER_PAGE_FLAGS READ_WRITE_PAGE | PAGE_USER | PAGE_PRESENT
+#define USER_TEXT_FLAGS PAGE_USER | PAGE_PRESENT
 #endif

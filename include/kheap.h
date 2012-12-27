@@ -55,4 +55,6 @@ Pointer kalloc(UInt32 size);
 Pointer kalloc_ex(UInt32 size, Bool pg, UInt32* phys);
 void kfree(Pointer p);
 
+Bool isInKernelHeap(Pointer p);
+
 #endif

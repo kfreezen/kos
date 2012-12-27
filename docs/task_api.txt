@@ -1,5 +1,0 @@
-void TaskingInit():  Initializes tasking.
-
-void SwitchTask():  A function of cooperative multitasking.  It sets up an interrupt stack and calls switch_task.
-
-The tasking system is a combination of preemptive and cooperative multitasking.  An application may give its time up if it is waiting for something to complete.

@@ -3,8 +3,12 @@
 #include <kheap.h>
 #include <print.h>
 
-//#define FAT12_DEBUG
-//#define FAT12_DEBUG_VERBOSE
+#define FAT12_DEBUG
+#define FAT12_DEBUG_VERBOSE
+
+#define FAT12_CONTEXTS_NUM 32
+FAT12_Context* FAT12_Contexts[FAT12_CONTEXTS_NUM];
+int nextContextToAdd = 0;
 
 inline int getFirstDataSector(Bpb* bpb) {
 	return bpb->reservedSectorsNum + (bpb->fatTables*bpb->numSectorsPerFat);
@@ -22,9 +26,24 @@ Byte fatBuffer[512];
 int fatSectorInBuffer=-1;
 
 FAT12_Context* FAT12_GetContext(Device* device) {
+	int i;
+	for(i=0; i<FAT12_CONTEXTS_NUM; i++) {
+		if(FAT12_Contexts[i]->linkedDevice==device) {
+			return FAT12_Contexts[i];
+		}
+	}
+
+	if(nextContextToAdd>=FAT12_CONTEXTS_NUM) {
+		kprintf("FAT12 Error:  No more contexts supported.\n");
+		return NULL;
+	}
+	
 	FAT12_Context* context = kalloc(sizeof(FAT12_Context));
 	context->linkedDevice = device;
 	context->bpb = device->getDeviceInfo();
+	
+	FAT12_Contexts[nextContextToAdd++] = context;
+	
 	return context;
 }
 
@@ -138,6 +157,10 @@ FAT12_File* FAT12_GetFile(FAT12_Context* context, const char* file) {
 Byte readSectorBuffer[512];
 
 UInt32 FAT12_Read_LL(FAT12_File* node, UInt32 offset, UInt32 length, UInt8* buf) {
+	#ifdef FAT12_DEBUG
+	kprintf("FAT12_Read_LL(%x, %x, %x, %x)\n", node, offset, length, buf);
+	#endif
+	
 	offset &= ~511;
 	
 	if(node->data.attribute==FAT12_ATTR_DIR) {
@@ -157,6 +180,11 @@ UInt32 FAT12_Read_LL(FAT12_File* node, UInt32 offset, UInt32 length, UInt8* buf)
 	
 	UInt16 relSector = entry.firstCluster;
 	
+	if(relSector==0) {
+		kprintf("entry.firstCluster==0\n");
+		return -1;
+	}
+	
 	int i;
 	int numToRead = length/0x200;
 	if(numToRead==0) {
@@ -164,15 +192,31 @@ UInt32 FAT12_Read_LL(FAT12_File* node, UInt32 offset, UInt32 length, UInt8* buf)
 	}
 	
 	for(i=0; i<numToRead; i++) {
+		// Error checking.
+		if(relSector >= FAT12_EOF) {
+			break;
+		} else if(relSector == 0x00) {
+			#ifdef FAT12_DEBUG
+			kprintf("relSector==0, breaking\n");
+			#endif
+			
+			break;
+		}
+		
 		int absSector = getAbsoluteSector(relSector, context->bpb);
 		
-		#ifdef FLOPPY_DEBUG
-		kprintf("reading %x,%x\n", &buffer[i*512], absSector);
+		#ifdef FAT12_DEBUG
+		kprintf("reading %x,%x,rel=%x\n", &buffer[i*512], absSector, relSector);
 		#endif
 		
 		FloppyReadSectorNoAlloc(absSector, readSectorBuffer);
 		memcpy(&buffer[i*512], readSectorBuffer, 512);
 		relSector = FAT12_GetClusterFromFAT(context, relSector);
+		
+		#ifdef FAT12_DEBUG
+		kprintf("relSector=%x\n", relSector);
+		#endif
+		
 		if(relSector>=FAT12_EOF) {
 			break;
 		}
@@ -183,6 +227,10 @@ UInt32 FAT12_Read_LL(FAT12_File* node, UInt32 offset, UInt32 length, UInt8* buf)
 
 // TODO:  When FAT12_Read_LL is improved, make sure this function is changed to take 'length' at face value.
 FileBuffer FAT12_Read_FB(FAT12_File* node, UInt32 off, UInt32 length) {
+	#ifdef FAT12_DEBUG
+	kprintf("FAT12_Read_FB(%x, %x, %x)\n", node, off, length);
+	#endif
+	
 	FileBuffer fb;
 	fb.length = node->data.fileSize;
 	
@@ -193,7 +241,7 @@ FileBuffer FAT12_Read_FB(FAT12_File* node, UInt32 off, UInt32 length) {
 	}
 	
 	fb.buffer = kalloc(len);
-	FAT12_Read_LL(node, off, length, fb.buffer);
+	FAT12_Read_LL(node, off, len, fb.buffer);
 	
 	return fb;
 }

@@ -4,6 +4,10 @@
 #include <kheap.h>
 #include <print.h>
 #include <pit.h>
+#include <fat12.h>
+#include <error.h>
+
+#define FLOPPY_DEBUG
 
 int flpy_error = 0;
 Bool floppy_done = false;
@@ -12,6 +16,7 @@ FloppyGeometry geom;
 volatile Bool receivedIrq=FALSE;
 int currentDrive = 0;
 
+int floppy_ticks_motor_disable = 0;
 
 void ResetFloppy();
 void FDC_Specify(UInt32 steprate, UInt32 load, UInt32 unload, Bool dma);
@@ -25,17 +30,29 @@ void FDC_Enable() {
 	outb(DIGITAL_OUTPUT_REGISTER, DOR_MASK_RESET | DOR_MASK_DMA);
 }
 
+void FloppyMotorCallback() {
+	if(floppy_ticks_motor_disable) {
+		--floppy_ticks_motor_disable;
+	} else {
+		outb(DIGITAL_OUTPUT_REGISTER, DOR_MASK_RESET);
+	}
+}
+
 static void floppy_irq_handler(Registers regs) {
 	receivedIrq=TRUE;
 }
 
-void send_command(Byte cmd) {
+int send_command(Byte cmd) {
 	int i;
 	int timeOut=500;
 	for(i=0; i<timeOut; i++) {
-		if(inb(MAIN_STATUS_REGISTER)&0x80) {
+		int msr = inb(MAIN_STATUS_REGISTER);
+		if((msr&0xc0) == 0x80) {
 			outb(DATA_FIFO, cmd);
-			return;
+			return 0;
+		} else {
+			ResetFloppy();
+			return 1;
 		}
 	}
 }
@@ -51,16 +68,66 @@ int read_data() {
 	return -1;
 }
 
+#define DO_CMD(func, cmd) \
+	if(send_command((cmd))) DoRetry((func))
+	
+#define NUMREADS_DUMPREG 10
+
+DumpRegResult FDC_DumpReg() {
+	DumpRegResult result;
+	send_command(DUMPREG);
+	
+	UInt8* registers = (UInt8*) &result;
+	
+	int i;
+	for(i=0; i<NUMREADS_DUMPREG; i++) {
+		registers[i] = read_data();
+	}
+	
+	return result;
+}
+
+#define NUMREADS_READID 7
+ReadIDResult FDC_ReadID(int head) {
+	ReadIDResult result;
+	
+	UInt8* registers = (UInt8*) &result;
+	
+	send_command(READ_ID);
+	send_command(((head&1)<<2)|currentDrive);
+	
+	int i;
+	for(i=0; i<NUMREADS_READID; i++) {
+		registers[i] = read_data();
+	}
+	
+	return result;
+}
+
+#define ABNORMAL_TERMINATION "Abnormal termination.  Command not successful."
+#define INVALID_COMMAND "Invalid command."
+#define ABNORMAL_TERMINATION_BY_POLLING "Abnormal termination.  Caused by polling."
+
+char* IC_MESSAGES[] = {ABNORMAL_TERMINATION, INVALID_COMMAND, ABNORMAL_TERMINATION_BY_POLLING};
+
+#define BIT_GET(a,b) (((a)>>(b))&0x1)
 void FDC_SenseInterrupt(UInt32* st0, UInt32* cyl) {
 	send_command(SENSE_INTERRUPT);
 	*st0 = read_data();
 	*cyl = read_data();
 	
-	#ifdef FLOPPY_DEBUG
-	kprintf("FDC_SenseInterrupt DataDump Begin\n");
-	kprintf("st0=%x\ncyl=%x\n", *st0, *cyl);
-	kprintf("FDC_SenseInterrupt DataDump End\n");
-	#endif
+	if((*st0)&(0x3<<6)) {
+		kprintf("Interrupt code:  %s\n", IC_MESSAGES[(*st0>>6)&0x3]);
+	}
+	
+	int equipment_check = BIT_GET(*st0, 4);
+	if(equipment_check) {
+		kprintf("FDC:  Equipment check failed.\n");
+	}
+}
+
+void StartFloppyMotorCountdown() {
+	floppy_ticks_motor_disable = 20;
 }
 
 void FloppyLBAToCHS(int lba, int *head, int *track, int *sector) {
@@ -121,13 +188,20 @@ void ResetFloppy() {
 	FDC_Calibrate(currentDrive);
 }
 
+// This basically discards the variable stack frame and calls the function again.
+extern void DoRetry(void* function);
+
 void FDC_Specify(UInt32 steprate, UInt32 load, UInt32 unload, Bool dma) {
 	UInt32 data = 0;
-	send_command(SPECIFY);
+
+	DO_CMD(FDC_Specify, data);
+	
 	data = ( (steprate&0xf) << 4) | (unload&0xf);
-	send_command(data);
+	
+	DO_CMD(FDC_Specify, data);
+	
 	data = (load) << 1 | (dma==TRUE) ? 1 : 0;
-	send_command(data);
+	DO_CMD(FDC_Specify, data);
 }
 
 inline void FDC_WaitIRQ() {
@@ -167,16 +241,27 @@ void FDC_ControlMotor(UInt32 drive, Bool toggle) {
 	}
 
 	//! turn on or off the motor of that drive
-	if (toggle)
+	if (toggle) {
 		outb(DIGITAL_OUTPUT_REGISTER, (currentDrive | motor | DOR_MASK_RESET | DOR_MASK_DMA));
-	else
-		outb(DIGITAL_OUTPUT_REGISTER, DOR_MASK_RESET);
-
-	//! in all cases; wait a little bit for the motor to spin up/turn off
-	wait (20);
+		
+		if(!floppy_ticks_motor_disable) {
+			floppy_ticks_motor_disable = 0;
+			
+			wait (20);
+		} else {
+			floppy_ticks_motor_disable = 0;
+		}
+	} else {
+		StartFloppyMotorCountdown();
+	}
+	
 }
 
 int FDC_Calibrate(UInt32 drive) {
+	#ifdef FLOPPY_DEBUG
+	kprintf("FDC_Calibrate(%x)\n", drive);
+	#endif
+	
 	UInt32 st0, cyl;
 	
 	if(drive>=4) {
@@ -202,7 +287,15 @@ int FDC_Calibrate(UInt32 drive) {
 	return -1;
 }
 
+void* FloppyGetMediaInfo();
+
+int maxCyl = 0;
+
 int FDC_Seek(UInt32 cyl, UInt32 head) {
+	#ifdef FLOPPY_DEBUG
+	kprintf("FDC_Seek(%x, %x) ", cyl, head);
+	#endif
+	
 	UInt32 st0, cyl0;
 	
 	if(currentDrive >= 4) {
@@ -214,18 +307,24 @@ int FDC_Seek(UInt32 cyl, UInt32 head) {
 		send_command(SEEK);
 		send_command((head)<<2 | currentDrive);
 		send_command(cyl);
-
-		#ifdef FLOPPY_DEBUG
-		kprintf("FDC_WAITIRQ\n");
-		#endif
 		
 		FDC_WaitIRQ();
 		FDC_SenseInterrupt(&st0, &cyl0);
 		
+		//if(st0
+		
 		if(cyl0==cyl) {
+			#ifdef FLOPPY_DEBUG
+			kprintf("ret 0\n");
+			#endif
+			
 			return 0;
 		}
 	}
+	
+	#ifdef FLOPPY_DEBUG
+	kprintf("ret -1\n");
+	#endif
 	
 	return -1;
 }
@@ -234,8 +333,15 @@ void FDC_ReadSectorInternal(UInt8 head, UInt8 track, UInt8 sector) {
 	UInt32 st0, cyl;
 	
 	#ifdef FLOPPY_DEBUG
-	kprintf("ReadSectorInternal\n");
+	kprintf("FDC_ReadSectorInternal(%x, %x, %x)\n", head, track, sector);
 	#endif
+	
+	if(sector==0) {
+		kprintf("Error.  sector==0 and should not be.\n");
+		
+		// We'll need to take this for out.
+		for(;;);
+	}
 	
 	DMA_PrepareRead();
 	
@@ -251,32 +357,17 @@ void FDC_ReadSectorInternal(UInt8 head, UInt8 track, UInt8 sector) {
 	
 	FDC_WaitIRQ();
 	
-	#undef FLOPPY_DEBUG
-	#ifdef FLOPPY_DEBUG
-	kprintf("ReadSector DataDump Begin\n");
-	#endif
-	
 	int j=0;
 	for(j=0; j<7; j++) {
-		#ifndef FLOPPY_DEBUG
 		read_data();
-		#endif
-		
-		#ifdef FLOPPY_DEBUG
-		kprintf("%x\n", read_data());
-		#endif
-		
 	}
-	
-	#ifdef FLOPPY_DEBUG
-	kprintf("ReadSector DataDump End\n");
-	#endif
-	#define FLOPPY_DEBUG
 	
 	FDC_SenseInterrupt(&st0, &cyl);
 }
 
 int FloppyReadSectorNoAlloc(int lba, void* buffer) {
+	kprintf("FloppyReadSectorNoAlloc(%x, %x)\n", lba, buffer);
+	
 	if(currentDrive>=4) {
 		return -1;
 	}
@@ -286,6 +377,7 @@ int FloppyReadSectorNoAlloc(int lba, void* buffer) {
 	
 	FDC_ControlMotor(currentDrive, TRUE);
 	if(FDC_Seek(track, head)!=0) {
+		FDC_ControlMotor(currentDrive, FALSE);
 		return -1;
 	}
 

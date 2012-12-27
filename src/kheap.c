@@ -299,6 +299,88 @@ UInt32 getAllocSize(void* pointer) {
 	return ((unsigned)footer)-((unsigned)header+sizeof(HeapHeader));
 }
 
+void unifyRight(Heap* heap, HeapHeader* header) {
+	if(header->magic_flags&HEAP_FREE) {
+		HeapFooter* footer = header->footer;
+		if((unsigned)footer+sizeof(HeapHeader)+sizeof(HeapFooter)<=(unsigned)heap->end) {
+			HeapHeader* rightHeader = (HeapHeader*)((void*)footer+sizeof(HeapFooter));
+			if((rightHeader->magic_flags&0xFFFF0000)!=HEAP_MAGIC && rightHeader->magic_flags!=HEAP_DESTROYED_MAGIC) {
+				kprintf("rightHeader=%x. rightHeader magic invalid.\n", rightHeader);
+			} else if(rightHeader->magic_flags&HEAP_FREE) {
+				// footer is destroyed.
+				// rightHeader is destroyed.
+				header->footer = rightHeader->footer;
+			
+				#ifdef KHEAP_DEBUG
+				kprintf("header->footer=%x\n", header->footer);
+				#endif
+			
+				rightHeader->footer->header = header;
+			
+				rightHeader->magic_flags = HEAP_DESTROYED_MAGIC;
+			
+				// FIXME I don't like having to use two magics. this code should work without using two magics.
+			}
+		}
+	}
+}
+
+void unifyLeft(Heap* heap, HeapHeader* header) {
+	if(header->magic_flags&HEAP_FREE) {
+		// See if there's enough room to do a unify left.
+		if((unsigned)header-sizeof(HeapHeader)-sizeof(HeapFooter)>=(unsigned)heap->start) {
+			HeapFooter* leftFooter = (HeapFooter*)((void*)header-sizeof(HeapFooter));
+			HeapHeader* leftHeader = leftFooter->header;
+			if(leftHeader->magic_flags & HEAP_FREE) {
+				HeapFooter* footer = header->footer;
+				// leftFooter is destroyed.
+				// header is destroyed.
+				leftHeader->footer = footer;
+				footer->header = leftHeader;
+				header->magic_flags = HEAP_DESTROYED_MAGIC;
+			}
+		}
+	}
+}
+
+// FIXME  There is another function that is accessing unpaged memory after this is called.
+void contractHeap(Heap* heap, int amountToLeave) {
+	HeapHeader* lastHeader = ((HeapFooter*)((UInt32)heap->end-sizeof(HeapFooter)))->header;
+	
+	#ifdef KHEAP_DEBUG
+	kprintf("lastHeader=%x\n", lastHeader);
+	#endif
+	
+	/*if(lastHeader->magic_flags&HEAP_FREE) {
+		UInt32 ptr = (UInt32) heap->end;
+		ptr &= 0xFFFFF000;
+		UInt32 stop_ptr = (UInt32) (heap->start + amountToLeave);
+		if(stop_ptr<=(UInt32)lastHeader->footer+sizeof(HeapFooter)) {
+			stop_ptr = ((UInt32)lastHeader->footer)+sizeof(HeapHeader)+sizeof(HeapFooter);
+		}
+		
+		if(stop_ptr&0xFFF) {
+			stop_ptr = (stop_ptr&0xFFFFF000) + 0x1000;
+		}
+	
+		while(1) {
+			if(ptr<stop_ptr) {
+				break;
+			}
+		
+			UnmapPageFrom(NULL, (void*) ptr);
+			ptr -= 0x1000;
+		}
+		
+		heap->end = (void*)ptr+0x1000;
+		HeapFooter* footer = (HeapFooter*) ((void*)heap->end-sizeof(HeapFooter));
+		footer->header = lastHeader;
+		lastHeader->footer = footer;
+	} else {
+		kprintf("Last heap entry is not free.\n");
+	}*/
+}
+
 void heap_free(Heap* heap, void* pointer) {
 	HeapHeader* header = pointer-sizeof(HeapHeader);
 	if((header->magic_flags & 0xFFFF0000) != HEAP_MAGIC) {
@@ -308,40 +390,32 @@ void heap_free(Heap* heap, void* pointer) {
 	
 	header->magic_flags |= HEAP_FREE;
 	
-	// See if there's enough room to do a unify left.
-	if((unsigned)header-sizeof(HeapHeader)-sizeof(HeapFooter)>=(unsigned)heap->start) {
-		HeapFooter* leftFooter = (HeapFooter*)((void*)header-sizeof(HeapFooter));
-		HeapHeader* leftHeader = leftFooter->header;
-		if(leftHeader->magic_flags & HEAP_FREE) {
-			HeapFooter* footer = header->footer;
-			// leftFooter is destroyed.
-			// header is destroyed.
-			leftHeader->footer = footer;
-			footer->header = leftHeader;
-			header->magic_flags = HEAP_DESTROYED_MAGIC;
+	while(1) {
+		if((void*)header<heap->start) {
+			break;
+		}
+		
+		unifyRight(heap, header);
+		
+		HeapFooter* footer = (HeapFooter*)((UInt32)header-sizeof(HeapFooter));
+		if((void*)footer<heap->start) {
+			break;
+		}
+		
+		header = ((HeapFooter*)((UInt32)header-sizeof(HeapFooter)))->header;
+	}
+	while(((UInt32)header->footer)+sizeof(HeapFooter)<(UInt32)heap->end) {
+		unifyRight(heap, header);
+		header = (HeapHeader*) ((UInt32)header->footer+sizeof(HeapFooter));
+		
+		if((void*)header>=heap->end) {
+			break;
 		}
 	}
 	
-	// See if there's enough room to do a unify right.
-	HeapFooter* footer = header->footer;
-	if((unsigned)footer+sizeof(HeapHeader)+sizeof(HeapFooter)<=(unsigned)heap->end) {
-		HeapHeader* rightHeader = (HeapHeader*)((void*)footer+sizeof(HeapFooter));
-		if((rightHeader->magic_flags&0xFFFF0000)!=HEAP_MAGIC && rightHeader->magic_flags!=HEAP_DESTROYED_MAGIC) {
-			kprintf("rightHeader=%x. rightHeader magic invalid.\n", rightHeader);
-		} else if(rightHeader->magic_flags&HEAP_FREE) {
-			// footer is destroyed.
-			// rightHeader is destroyed.
-			header->footer = rightHeader->footer;
-			
-			#ifdef KHEAP_DEBUG
-			kprintf("header->footer=%x\n", header->footer);
-			#endif
-			
-			header->footer->header = header;
-			rightHeader->magic_flags = HEAP_DESTROYED_MAGIC;
-			
-			// FIXME I don't like having to use two magics. this code should work without using two magics.
-		}
+	HeapFooter* lastFooter = (HeapFooter*)((UInt32)heap->end-sizeof(HeapFooter));
+	if(lastFooter->header->magic_flags & HEAP_FREE) {
+		contractHeap(heap, HEAP_ADD_AMOUNT);
 	}
 }
 
@@ -355,4 +429,12 @@ void setKernelHeap(Heap* heap) {
 
 Heap* getKernelHeap() {
 	return kHeap;
+}
+
+Bool isInKernelHeap(Pointer p) {
+	if(p>kHeap->start && p<kHeap->end) {
+		return TRUE;
+	} else {
+		return FALSE;
+	}
 }

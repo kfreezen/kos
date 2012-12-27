@@ -1,18 +1,39 @@
-[ORG 0x500]
-[BITS 32]
+[section .text]
+[global _start]
 
-start:
-	mov eax, 0
-	mov ebx, hello_world_text
-	int 70
-	mov ebx, 0xB8000
-	mov al, 'B'
-	mov [ebx], al
-	ret
+%define SYSCALL_CONSOLE 0x1
+	%define CONSOLE_PUTS 0x0
+	%define CONSOLE_PUTCH 0x1
+	%define CONSOLE_PUTHEX 0x2
+	%define CONSOLE_PUTDEC 0x3
+%define SYSCALL_TASK 0x3
+	%define TASK_GETPID 0x0
 	
-nop
-nop
-nop
-nop
+_start:
+	mov eax, SYSCALL_CONSOLE
+	mov ebx, CONSOLE_PUTS
+	mov ecx, hello_world_text
+	int 70
+	
+	mov eax, SYSCALL_TASK
+	mov ebx, TASK_GETPID
+	int 70
+	
+	mov ecx, eax
+	mov eax, SYSCALL_CONSOLE
+	mov ebx, CONSOLE_PUTDEC
+	int 70
+	
+	mov eax, SYSCALL_CONSOLE
+	mov ebx, CONSOLE_PUTS
+	mov ecx, newline
+	int 70
+	
+	xor eax, eax
+	xor ebx, ebx
+	int 70
 
-hello_world_text: db "Hello, world", 0xa, 0
+[section .data]
+
+hello_world_text: db "Hello, world ", 0
+newline: db 0xa, 0

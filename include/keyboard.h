@@ -22,4 +22,5 @@ void WaitForKeypress();
 char* GetBuffer(); // Gets the current state of the buffer and clears it.
 char* GetLine(char c); // Returns the buffer and clears it if the last non-null character is 'c', else returns NULL
 
+Byte KB_GetChar();
 #endif

@@ -60,6 +60,7 @@ typedef struct {
 } FileBuffer;
 
 UInt32 FAT12_Read_LL(FAT12_File* node, UInt32 off, UInt32 length, UInt8* buffer);
+FileBuffer FAT12_Read_FB(FAT12_File* node, UInt32 off, UInt32 length);
 
 FAT12_File* FAT12_GetFile(FAT12_Context* context, const char* file);
 
@@ -87,5 +88,11 @@ struct __Bpb {
 // FFFF:  File identifier.
 
 FAT12_Context* FAT12_GetContext(Device* device);
+
+// Lowlevel driver functions for file write support.
+int FAT12_GetFreeClusterFromFat(FAT12_Context* context);
+int FAT12_GetFreeDirectoryEntry(FAT12_Context* context);
+void FAT12_WriteDirectoryEntry(FAT12_Context* context, DirEntry* entry);
+void FAT12_WriteCluster(FAT12_Context* context, int cluster, Byte* buffer);
 
 #endif

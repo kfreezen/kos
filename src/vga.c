@@ -1,5 +1,6 @@
 #include <print.h>
 #include <KOSTypes.h>
+#include <graphics.h>
 
 #define pokeb(O, V) *(unsigned char*)(O) = (V)
 #define pokew(O, V) *(unsigned short*)(O) = (V)
@@ -1172,6 +1173,11 @@ DEMO GRAPHICS MODES
 	draw_x();
 	set_text_mode(0);
 }*/
+
+void changeTo320x200_Graphics() {
+	write_regs(g_320x200x256);
+	memset(0xA0000, 0, 320*200);
+}
 
 /*****************************************************************************
 *****************************************************************************/

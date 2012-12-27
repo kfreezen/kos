@@ -7,11 +7,11 @@
 struct Task;
 
 typedef struct Task {
-	int id;
-	UInt32 esp, ebp;
-	UInt32 eip;
-	PageDirectory* dir;
-	struct Task* next;
+	int id; // 0
+	UInt32 esp, ebp; // 4-11
+	UInt32 eip; // 12
+	PageDirectory* dir; // 16
+	struct Task* next; // 20
 } Task;
 
 void InitTasking();

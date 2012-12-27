@@ -80,10 +80,14 @@ TaskSwitch:
 	
 	mov ebx, [current_task]
 	
+	; TODO Figure out how to create a struct in nasm assembly code.
 	cli
+	mov eax, [ebx+16] ; pageDirectory
 	mov esp, [ebx+4]
 	mov ebp, [ebx+8]
+	mov eax, [eax+8192] ; pageDirectory->phys
 	mov ecx, [ebx+12]
+	mov cr3, ebx
 	mov eax, 0x12345
 	sti
 	jmp ecx
@@ -99,7 +103,4 @@ TaskSwitch:
 [global default_stack]
 
 default_stack dd 256
-
-doret db "Returning. esp=%x", 10,0
-taskswitch db "Taskswitch! %x, esp=%x, ebp=%x, eip=%x",10,0
 

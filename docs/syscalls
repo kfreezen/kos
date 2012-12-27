@@ -1,0 +1,13 @@
+The system call interrupt is int 70.
+
+eax must equal the system call function.
+The other registers are its arguments.
+
+eax = 0:  SYSCALL_EXIT
+	ebx = x:  x Is the return value for the task.
+
+eax = 1:  SYSCALL_CONSOLE
+	ebx = 0:  CONSOLE_PUTS
+		ecx = string to print
+	ebx = 1:  CONSOLE_PUTCH
+		ecx = character to print

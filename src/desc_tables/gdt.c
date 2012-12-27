@@ -4,7 +4,7 @@
 
 Bool gdt_isInit = false;
 
-#define GDT_DEBUG
+//#define GDT_DEBUG
 #define GDT_ENTRIES 6
 
 GdtDescriptor gdt_desc;

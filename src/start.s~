@@ -80,6 +80,7 @@ _rdtsc:
 [extern interval_c]
 [extern pithook]
 [extern mstime]
+[extern current_task]
 [extern __rdtsc]
 [extern last_rdtsc]
 [extern TaskSwitch]

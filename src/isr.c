@@ -1,6 +1,10 @@
 #include <print.h>
 #include <screenapi.h>
 #include <keyboard.h>
+#include <paging.h>
+#include <kheap.h>
+#include <tasking.h>
+#include <debugger.h>
 
 #include <isr.h>
 
@@ -12,6 +16,40 @@ extern IntHandler int_handlers[256];
 Syscall syscalls[512];
 
 extern void kb_syscall(Registers regs);
+
+extern Task* current_task;
+extern Task* ready_queue;
+
+// TODO:  Create some kind of queue for the kernel to get rid of the left over stuff from the task in its spare time, so as to prevent lagging when a task is closed.
+
+extern void TaskSwitch();
+
+static void syscall_exit(Registers* regs) {
+	Task* toExit = current_task;
+	PageDirectory* dir = toExit->dir;
+	
+	if(toExit->id==1) {
+		// This is the kernel task.
+		return;
+	}
+	
+	// take toExit out of the queue.
+	Task* tmp = ready_queue;
+	while(tmp->next != toExit);
+	
+	// tmp->next now equals toExit.
+	
+	tmp->next = toExit->next;
+	
+	FreeAllUserPages(toExit->dir);
+	
+	if(isInKernelHeap(dir)) {
+		kfree(dir);
+	}
+
+	TaskSwitch();
+}
+
 
 static void double_fault_handler(Registers regs) { // int 8
 	ClsEx(BSOD_ATTR);
@@ -76,9 +114,14 @@ static void checkpoint_handler(Registers regs) {
 }
 
 static void invalid_opcode_handler(Registers regs) {
-	kprintf("INVALID_OPCODE:  eip=%x\n", regs.eip);
+	kprintf("INVALID_OPCODE:  eip=%x, esp=%x\npid=%d\n", regs.eip, regs.useresp, GetPID());
 	
-	for(;;);
+	if(GetPID()==1) { // KERNEL
+		kprintf("kernel panic!\n");
+		for(;;);
+	} else {
+		syscall_exit(&regs);
+	}
 }
 
 static void page_fault_handler(Registers regs) {
@@ -108,7 +151,17 @@ static void syscall_console(Registers* regs) {
 		case CONSOLE_PUTCH:
 			PutChar(regs->ecx);
 			break;
+		case CONSOLE_PUTHEX:
+			PutHex(regs->ecx);
+			break;
+		case CONSOLE_PUTDEC:
+			PutDec(regs->ecx);
+			break;
 	}
+}
+
+static void syscall_task(Registers* regs) {
+	regs->eax = GetPID();
 }
 
 int ISR_Init() {
@@ -136,8 +189,10 @@ int ISR_Init() {
 	
 	registerIntHandler(71, checkpoint_handler);
 	
+	registerSyscall(SYSCALL_EXIT, syscall_exit);
 	registerSyscall(SYSCALL_CONSOLE, syscall_console);
 	registerSyscall(SYSCALL_KB, kb_syscall);
+	registerSyscall(SYSCALL_TASK, syscall_task);
 	
 	isr_isInit = true;
 	return 0;
@@ -182,7 +237,9 @@ void registerIntHandler(int interrupt, IntHandler h) {
 }
 
 void registerSyscall(int eax, Syscall s) {
-	syscalls[eax] = s;
+	if(!syscalls[eax]) {
+		syscalls[eax] = s;
+	}
 }
 
 void genericHandler(Registers regs) {

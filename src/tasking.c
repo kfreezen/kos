@@ -98,8 +98,10 @@ void CreateStack(PageDirectory* dir, void* top, UInt32 size) {
 	}
 }
 
-int CreateTask(UInt32 start) {
-	PageDirectory* dir = CloneDirectory(currentPageDir, DIR_OTHER_TASK);
+int CreateTask(UInt32 start, PageDirectory* dir) {
+	if(dir==NULL) {
+		dir = CloneDirectory(currentPageDir, DIR_OTHER_TASK);
+	}
 	Task* newTask = (Task*)kalloc(sizeof(Task));
 	newTask->id = next_pid++;
 	newTask->esp = newTask->ebp = 0;
@@ -108,7 +110,7 @@ int CreateTask(UInt32 start) {
 	newTask->next = 0;
 	
 	#ifdef TASKING_DEBUG
-	kprintf("CreateTask.waypoint1\n");
+	kprintf("CreateTask.waypoint1:eip=%x\n", newTask->eip);
 	#endif
 	
 	// Here we need to set up the stack.
@@ -117,11 +119,11 @@ int CreateTask(UInt32 start) {
 	PageDirectory* saved = currentPageDir;
 	SwitchPageDirectory(dir);
 	// Set up the stack for return from an interrupt.
-	TaskStackSetup(0x20000, start);
+	//TaskStackSetup(0xE0000000-(sizeof(void*)<<1), start);
 	SwitchPageDirectory(saved);
 	
 	//newTask->esp = 0xE0000000-8;
-	newTask->esp = 0x20000;
+	newTask->esp = 0xE0000000-sizeof(void*);
 	newTask->eip = (UInt32) start;
 	
 	Task* tmp = (Task*) ready_queue;
@@ -138,6 +140,15 @@ int CreateTask(UInt32 start) {
 	return 0;
 }
 
+volatile Task* saved_task;
+void DisableTasking() {
+	saved_task = current_task;
+	current_task = NULL;
+}
+
+void ReenableTasking() {
+	current_task = saved_task;
+}
 int GetPID() {
 	return current_task->id;
 }

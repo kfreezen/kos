@@ -40,6 +40,7 @@ enum FloppyCommands {
    READ_ID =                    10,	// generates IRQ6
    READ_DELETED_DATA =          12,
    FORMAT_TRACK =               13,     // *
+   DUMPREG = 14,
    SEEK =                       15,     // * seek both heads to cylinder X
    VERSION_CMD =                16,	// * used during initialization, once
    SCAN_EQUAL =                 17,
@@ -88,4 +89,18 @@ typedef struct __floppy_geom {
 	UInt32 heads;
 } FloppyGeometry;
 
+typedef struct {
+	UInt8 pcnDrive[4];
+	UInt8 srt_hut;
+	UInt8 hlt_nd;
+	UInt8 sc_eot;
+	UInt8 misc_0;
+	UInt8 misc_1;
+	UInt8 pretrk;
+} DumpRegResult;
+
+typedef struct {
+	UInt8 st0, st1, st2;
+	UInt8 cyl, head, sct_addr, sct_size;
+} ReadIDResult;
 #endif

@@ -18,7 +18,7 @@ void InitTasking();
 
 void TaskSwitch();
 
-int CreateTask(UInt32 start);
+int CreateTask(UInt32 start, PageDirectory* dir);
 
 int GetPID();
 

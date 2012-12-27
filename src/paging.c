@@ -31,6 +31,44 @@ UInt32 AllocPage() {
 	return ret;
 }
 
+void FreeAllUserPages(PageDirectory* dir) {
+	int i;
+	for(i=0; i<1024; i++) {
+		if(dir->d[i]&PAGE_KERNEL) {
+			// Don't do anything
+		} else if(dir->d[i]&PAGE_PRESENT) {
+			PageTable* table = (PageTable*) dir->kd[i];
+			
+			int j;
+			for(j=0; j<1024; j++) {
+				if(!(table->t[j]&PAGE_KERNEL) && table->t[j]&PAGE_PRESENT) {
+					#ifdef PAGING_DEBUG
+					kprintf("table=%x, table->t[%d]=%x\n", table, j, table->t[j]);
+					#endif
+					
+					FreePage((table->t[j]&~0xFFF)>>12);
+				}
+			}
+			
+			if(isInKernelHeap(table)) {
+				kfree(table);
+			}
+		}
+	}
+}
+
+void FreePage(UInt32 page) {
+	#ifdef PAGING_DEBUG
+	kprintf("FreePage(%x)\n", page);
+	if(page>pages->length<<5) {
+		kprintf("FreePage() error.\n");
+		for(;;);
+	}
+	#endif
+	
+	Bitset_Set(pages, page, 0);
+}
+
 UInt32 AllocPageBlock() {
 	#ifdef PAGING_DEBUG
 	kprintf("AllocPageBlock() ");
@@ -206,7 +244,7 @@ void InitPaging(int mem_kb) {
 			break;
 		}
 		#ifdef PAGING_DEBUG
-		kprintf("d[%d]=%x, kd[%d]=%x\n", i, pageDir->d[i], i, pageDir->kd[i]);
+		kprintf("d[%d]=%x, kd[%d]=%x\n", i, kernelPageDir->d[i], i, kernelPageDir->kd[i]);
 		#endif
 	}
 	
@@ -399,4 +437,22 @@ int MapAllocatedPageTo(PageDirectory* dir, void* virtualAddr, int flags) {
 	}
 	
 	return 0;
+}
+
+void UnmapPageFrom(PageDirectory* dir, void* ptr) {
+	if(dir==NULL) {
+		dir = currentPageDir;
+	}
+	
+	int pt_index, pd_index;
+	
+	pd_index = ((UInt32)ptr)>>22;
+	pt_index = ((UInt32)ptr>>12)&0x3ff;
+	
+	PageTable* table = (PageTable*) dir->kd[pd_index];
+	
+	UInt32 page = table->t[pt_index] & ~0xFFF;
+	
+	table->t[pt_index] = 0;
+	FreePage(page>>12);
 }

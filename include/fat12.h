@@ -11,7 +11,8 @@
 #define FILE_ATTR_LONG_FILE_NAME 0xF // FIXME:  Get rid of all instances of this, then delete.  Use FAT12_LONG_FILENAME
 #define FAT12_LONG_FILENAME 0xF
 
-#define FAT12_EOF 0xFF8
+#define FAT12_EOF 0xFF0
+
 #define ENTRY_ATTR_DIR 0x10
 
 struct __DirEntry {
@@ -88,5 +89,11 @@ struct __Bpb {
 // FFFF:  File identifier.
 
 FAT12_Context* FAT12_GetContext(Device* device);
+
+// Lowlevel driver functions for file write support.
+int FAT12_GetFreeClusterFromFat(FAT12_Context* context);
+int FAT12_GetFreeDirectoryEntry(FAT12_Context* context);
+void FAT12_WriteDirectoryEntry(FAT12_Context* context, DirEntry* entry);
+void FAT12_WriteCluster(FAT12_Context* context, int cluster, Byte* buffer);
 
 #endif

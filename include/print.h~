@@ -22,6 +22,4 @@ void kprintf(const char* fmt, ...);
 void Cls();
 void ClsEx(UInt8 color);
 
-#define HI_RES 1
-#define LO_RES 0
 #endif

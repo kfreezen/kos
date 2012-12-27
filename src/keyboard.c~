@@ -13,8 +13,8 @@ int active_maps[2];
 
 char* KB_Buffer;
 
-int buf_itr = 0;
-int buf_tail = 0;
+int kb_buf_itr = 0;
+int kb_buf_tail = 0;
 
 int shift_state=0;
 int alt_state=0;
@@ -34,15 +34,17 @@ void SetNonblocking(int nb) {
 }
 
 void KPutChar(char c) {
-	if(c=='\b') {
-		KB_Buffer[--buf_itr] = 0;
-	} else if(buf_itr<KB_BUF_SIZE) {
-		KB_Buffer[buf_itr++] = c;
+	/*if(c=='\b') {
+		KB_Buffer[--kb_buf_itr] = 0;
+	} else*/ if(kb_buf_itr<KB_BUF_SIZE) {
+		KB_Buffer[kb_buf_itr++] = c;
 	}
 	
-	if(buf_itr >= KB_BUF_SIZE) {
-		buf_itr = 0;
+	if(kb_buf_itr >= KB_BUF_SIZE) {
+		kb_buf_itr = 0;
 	}
+	
+	wait_press = 0;
 	
 	if(!noecho) PutChar(c);
 }	
@@ -76,6 +78,8 @@ static void kb_callback(Registers regs) {
 }
 
 void KB_Init(int ne) {
+	wait_press = 1;
+	
 	FAT12_Context* context = FAT12_GetContext(FloppyGetDevice());	
 	FAT12_File* file = FAT12_GetFile(context, "kbmaps.dat");
 	
@@ -120,18 +124,30 @@ void KB_Init(int ne) {
 }
 
 void WaitForKeypress() {
-	wait_press=1;
 	while(wait_press) {}
+	wait_press=1;
 }
 
 // Returns a character if there is one in the queue
 Byte KB_PollChar() {
-	if(buf_itr>=buf_tail) {
-		Byte tmp = KB_Buffer[buf_tail];
-		KB_Buffer[buf_tail++] = 0;
+	if(kb_buf_itr>kb_buf_tail) {
+		Byte tmp = KB_Buffer[kb_buf_tail];
+		KB_Buffer[kb_buf_tail++] = 0;
 		return tmp;
 	} else {
 		return 0;
+	}
+}
+
+// Returns a character.  Blocks if there is none in the queue.
+Byte KB_GetChar() {
+	if(kb_buf_itr>kb_buf_tail) {
+		Byte tmp = KB_Buffer[kb_buf_tail];
+		KB_Buffer[kb_buf_tail++] = 0;
+		return tmp;
+	} else {
+		WaitForKeypress();
+		return KB_GetChar();
 	}
 }
 

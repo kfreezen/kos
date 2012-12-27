@@ -29,4 +29,5 @@ void SetColorAttribute(UInt8 c);
 
 Error GetError();
 
+void SetLineColor(int line, UInt8 color);
 #endif

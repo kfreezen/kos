@@ -29,9 +29,12 @@ int PutString(String s) {
 	return PutStringEx(s, false);
 }
 
-void PutHexEx(UInt32 num, Bool noZeroes) {
+void PutHexEx(UInt32 num, Bool noZeroes, Bool hexIdent) {
 	Int32 tmp;
-	PrintString("0x");
+	
+	if(hexIdent) {
+		PrintString("0x");
+	}
 	
 	int i;
 	for(i = 28; i>0; i-=4) {
@@ -60,7 +63,7 @@ void PutHexEx(UInt32 num, Bool noZeroes) {
 }
 
 void PutHex(UInt32 num) {
-	PutHexEx(num, true);
+	PutHexEx(num, true, true);
 }
 
 void PutDec(UInt32 num) {
