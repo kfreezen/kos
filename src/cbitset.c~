@@ -24,7 +24,8 @@ Bitset* Bitset_Create(UInt32 length) {
 
 // A faster implementation.
 int Bitset_FirstWithValue(Bitset* bits, int value) {
-	kprintf("Bitset_FirstWithValue(%x, %x)\n", bits, value);
+	//kprintf("Bitset_FirstWithValue(%x, %x)\n", bits, value);
+	
 	if(bits==NULL) {
 		kprintf("bits==null\n");
 		
@@ -69,6 +70,8 @@ void Bitset_Resize(Bitset* bits, int size) {
 	memcpy(bitsData, bits->bitData, size/32*sizeof(UInt32));
 	
 	bits->length = size/32;
+	
+	kfree(bits->bitData);
 	bits->bitData = bitsData;
 }
 
@@ -85,7 +88,7 @@ int Bitset_Set(Bitset* bits, UInt32 idx, int value) {
 		return -1;
 	}
 	
-	kprintf("Bitset_Set(%x, %x, %x)", bits, idx, value);
+	//kprintf("Bitset_Set(%x, %x, %x)", bits, idx, value);
 	
 	if(value) {
 		bits->bitData[idx/32] |= 1<<(idx%32);

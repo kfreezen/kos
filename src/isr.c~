@@ -5,17 +5,19 @@
 #include <kheap.h>
 #include <tasking.h>
 #include <debugger.h>
+#include <debugdef.h>
 
 #include <isr.h>
 
 #define BSOD_ATTR 0x1F
 
 Bool isr_isInit = false;
+Bool kb_interrupt = false;
 
 extern IntHandler int_handlers[256];
 Syscall syscalls[512];
 
-extern void kb_syscall(Registers regs);
+extern void kb_syscall(Registers* regs);
 
 extern Task* current_task;
 extern Task* ready_queue;
@@ -23,6 +25,26 @@ extern Task* ready_queue;
 // TODO:  Create some kind of queue for the kernel to get rid of the left over stuff from the task in its spare time, so as to prevent lagging when a task is closed.
 
 extern void TaskSwitch();
+
+static void kb_handler_for_exceptions(Registers regs) {
+	kb_interrupt = true;
+}
+
+void StackTrace(Registers* regs) {
+	kprintf("eax=%x, ebx=%x, ecx=%x, edx=%x\nesp=%x, ebp=%x", regs->eax, regs->ebx, regs->ecx, regs->edx, regs->esp, regs->ebp);
+}
+
+// This will only be done if a kernel mode application has caused the fault.
+void SetupIRQHandlersForExceptions() {
+	int irq = IRQ0;
+	
+	// First we set them all to NULL so we don't mess stuff up when interrupts are re-enabled.
+	for(; irq<IRQ15+1; irq++) {
+		int_handlers[irq] = NULL;
+	}
+	
+	int_handlers[IRQ1] = kb_handler_for_exceptions;
+}
 
 static void syscall_exit(Registers* regs) {
 	Task* toExit = current_task;
@@ -132,7 +154,19 @@ static void page_fault_handler(Registers regs) {
 	
 	kprintf("PAGE_FAULT:  eip=%x, errCode=%x, address=%x\n", regs.eip, regs.err_code, cr2);
 	
-	for(;;);
+	/*SetupIRQHandlersForExceptions();
+	kb_interrupt = false;
+	asm volatile("sti");
+	
+	while(!kb_interrupt);*/
+	
+	StackTrace(&regs);
+	
+	asm volatile("cli");
+	
+	for(;;) {
+		asm volatile("hlt");
+	}
 }
 
 static void null_irq7_handler(Registers regs) {
@@ -147,6 +181,10 @@ static void syscall_console(Registers* regs) {
 	switch(regs->ebx) {
 		case CONSOLE_PUTS:
 			PutString((char*)regs->ecx);
+			#ifdef SYSCALL_DEBUG
+			kprintf("eax=%x, ebx=%x, ecx=%x ", regs->eax, regs->ebx, regs->ecx);
+			#endif
+			
 			break;
 		case CONSOLE_PUTCH:
 			PutChar(regs->ecx);
@@ -159,8 +197,6 @@ static void syscall_console(Registers* regs) {
 			break;
 	}
 }
-
-extern void TaskSwitch();
 
 static void syscall_task(Registers* regs) {
 	regs->eax = GetPID();
@@ -226,6 +262,10 @@ void isr_handler(Registers regs) {
 }
 
 void syscall_handler(Registers regs) {
+	#ifdef SYSCALL_DEBUG
+	kprintf("syscall! ");
+	#endif
+	
 	if(syscalls[regs.eax] != 0) {
 		Syscall syscall = syscalls[regs.eax];
 		syscall(&regs);

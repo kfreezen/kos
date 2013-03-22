@@ -2,9 +2,9 @@
 #include <common/bitset.h>
 #include <kheap.h>
 #include <print.h>
+#include <debugdef.h>
 
-//#define PAGING_DEBUG
-//#define PAGING_DEBUG_VERBOSE
+// FIXME:  There is a bug in this file that causes the heap to map to 0x00000000, when it should be mapped after the kernel.
 
 PageDirectory staticKPageDir __attribute__((aligned(0x1000)));
 
@@ -76,14 +76,14 @@ UInt32 AllocPageBlock() {
 	
 	UInt32 i;
 	for(i=0; i<pages->length; i++) {
-		if(!pages->bitData[i]) { // This is an entire free page block.
-			pages->bitData[i] = ~1;
+		if(pages->bitData[i]==0) { // This is an entire free page block.
+			pages->bitData[i] = ~0;
 			break;
 		}
 	}
 	
 	#ifdef PAGING_DEBUG
-	kprintf("ret %x\n", i*32);
+	kprintf("ret %x,%x,%d\n", i*32, pages->bitData, pages->length);
 	#endif
 	
 	return i*32;
@@ -170,12 +170,20 @@ void SwitchPageDirectory(PageDirectory* dir) {
 }
 
 void InitPaging(int mem_kb) {
+	#ifdef PAGING_DEBUG
+	kprintf("InitPaging(%d)\n", mem_kb);
+	#endif
+	
 	UInt32 phys = 0;
 	
 	pages = kmalloc(sizeof(Bitset));
 	int pagesAmount = mem_kb/4;
 	pages->bitData = (void*) kmalloc(pagesAmount/32);
 	pages->length = pagesAmount/32;
+	
+	#ifdef PAGING_DEBUG
+	kprintf("pages->length=%d\n", pages->length);
+	#endif
 	
 	// Do 1 to 1 paging on everything up to placement_address.
 	kernelPageDir = (PageDirectory*) kmalloc_ap(sizeof(PageDirectory), &phys);

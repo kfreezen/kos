@@ -11,7 +11,7 @@ void _start() {
 }*/
 
 void _start() {
-	printf("Hello, world v1 %d\n", syscall2(SYSCALL_TASK, TASK_GETPID));
-	
+	//printf("Hello, world v1 %d\n", syscall2(SYSCALL_TASK, TASK_GETPID));
+	puts("Hello, world v1\n");
 	syscall2(SYSCALL_EXIT, 0);
 }

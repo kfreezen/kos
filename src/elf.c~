@@ -17,6 +17,8 @@ ELF* Parse_ELF(Pointer executable) {
 		
 	} else {
 		#ifdef ELF_DEBUG
+		int i;
+		
 		for(i=0; i<4; i++) {
 			kprintf("hdr->e_ident[%d] = %x\n", i, hdr->e_ident[i]);
 		}
@@ -53,7 +55,8 @@ ELF* Parse_ELF(Pointer executable) {
 	
 	Elf32_Phdr* p_headers = (Elf32_Phdr*) ((UInt32)executable+hdr->e_phoff);
 	
-	Elf32_Phdr* text=NULL, *data=NULL;
+	Elf32_Phdr* text=NULL;
+	Elf32_Phdr* headers[16];
 	
 	PageDirectory* dir = CloneDirectory(NULL, DIR_OTHER_TASK);
 	PageDirectory* saved = currentPageDir;
@@ -65,7 +68,7 @@ ELF* Parse_ELF(Pointer executable) {
 	SwitchPageDirectory(dir);
 	int i;
 	for(i=0; i<hdr->e_phnum; i++) {
-		// Find .data and .text
+		// Find .text, load it, and load all others appropriately
 		#ifdef ELF_DEBUG
 		kprintf("p_headers[%d].p_flags = %x.  hdr->e_phnum=%d\n", i, p_headers[i].p_flags, hdr->e_phnum);
 		#endif
@@ -85,6 +88,7 @@ ELF* Parse_ELF(Pointer executable) {
 			ptr+=0x1000;
 		}
 		
+		// This is paging faulting on 0x8048334
 		memcpy(p_headers[i].p_vaddr, executable+p_headers[i].p_offset, p_headers[i].p_filesz);
 		/*
 		if(p_headers[i].p_flags&PF_W) {
@@ -99,47 +103,6 @@ ELF* Parse_ELF(Pointer executable) {
 	}
 	
 	SwitchPageDirectory(saved);
-	
-	/*
-	// Map address of text.
-	int pagesNum;
-	void* ptr = (void*) ((UInt32)text->p_vaddr&~0xFFF);
-	int memsz = text->p_memsz;
-	
-	if(memsz&0xFFF) {
-		memsz += 0x1000;
-	}
-	pagesNum = memsz>>12;
-	
-	for(i=0; i<pagesNum; i++) {
-		MapAllocatedPageTo(dir, ptr, USER_TEXT_FLAGS);
-		ptr+=0x1000;
-	}
-	
-	// Map address of data.
-	ptr = (void*)((UInt32)data->p_vaddr&~0xFFF);
-	
-	memsz = data->p_memsz;
-	if(memsz&0xFFF) {
-		memsz+=0x1000;
-	}
-	
-	pagesNum = memsz>>12;
-	
-	for(i=0; i<pagesNum; i++) {
-		MapAllocatedPageTo(dir, ptr, USER_PAGE_FLAGS);
-	}
-	
-	PageDirectory* saved = currentPageDir;
-	SwitchPageDirectory(dir);
-	
-	// TODO  We should do checks to make sure that the ELF pointers are valid in this page directory.
-	
-	memcpy(text->p_vaddr, executable+text->p_offset, text->p_filesz);
-	memcpy(data->p_vaddr, executable+data->p_offset, data->p_filesz);
-	
-	SwitchPageDirectory(saved);
-	*/
 		
 	elf->dir = dir;
 	elf->start = hdr->e_entry;

@@ -134,6 +134,12 @@ void* ALItrNext(ALIterator* itr) {
 	return tmp;
 }
 
-void ALFreeIterator(ALIterator* itr) {
+void ALFreeItr(ALIterator* itr) {
 	kfree(itr);
+}
+
+void ALFreeList(ArrayList* list) {
+	kfree(list->allocatedListPtr);
+	Bitset_Free(list->bits);
+	kfree(list);
 }

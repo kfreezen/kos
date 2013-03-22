@@ -2,9 +2,7 @@
 #include <floppy.h>
 #include <kheap.h>
 #include <print.h>
-
-#define FAT12_DEBUG
-#define FAT12_DEBUG_VERBOSE
+#include <debugdef.h>
 
 #define FAT12_CONTEXTS_NUM 32
 FAT12_Context* FAT12_Contexts[FAT12_CONTEXTS_NUM];
@@ -210,6 +208,7 @@ UInt32 FAT12_Read_LL(FAT12_File* node, UInt32 offset, UInt32 length, UInt8* buf)
 		#endif
 		
 		FloppyReadSectorNoAlloc(absSector, readSectorBuffer);
+		
 		memcpy(&buffer[i*512], readSectorBuffer, 512);
 		relSector = FAT12_GetClusterFromFAT(context, relSector);
 		
@@ -218,7 +217,7 @@ UInt32 FAT12_Read_LL(FAT12_File* node, UInt32 offset, UInt32 length, UInt8* buf)
 		#endif
 		
 		if(relSector>=FAT12_EOF) {
-			break;
+			return 0;
 		}
 	}
 	

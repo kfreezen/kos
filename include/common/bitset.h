@@ -21,4 +21,5 @@ void Bitset_Resize(Bitset* bits, int size);
 
 int Bitset_FirstWithValue(Bitset* bits, int val);
 
+void Bitset_Free(Bitset* bits);
 #endif

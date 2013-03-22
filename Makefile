@@ -17,7 +17,7 @@ ASFLAGS:=-felf32
 LD:=@ld
 LDFLAGS:=-melf_i386 -Tlink.ld
 
-all: $(SOURCES) link
+all: $(SOURCES) $(HDR) link
 	
 link:
 	$(LD) $(LDFLAGS) -o kernel $(SOURCES)

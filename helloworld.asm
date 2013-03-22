@@ -1,6 +1,7 @@
 [section .text]
 [global _start]
 
+%define SYSCALL_EXIT 0x0
 %define SYSCALL_CONSOLE 0x1
 	%define CONSOLE_PUTS 0x0
 	%define CONSOLE_PUTCH 0x1
@@ -10,30 +11,25 @@
 	%define TASK_GETPID 0x0
 	
 _start:
+	mov ebp, esp
+	
+	;push hello_world_text
+	;push CONSOLE_PUTS
+	;push SYSCALL_CONSOLE
+	;call syscall3
+	
 	mov eax, SYSCALL_CONSOLE
 	mov ebx, CONSOLE_PUTS
 	mov ecx, hello_world_text
 	int 70
 	
-	mov eax, SYSCALL_TASK
-	mov ebx, TASK_GETPID
+	add esp, 4
+	
+	mov eax, SYSCALL_EXIT
+	mov ebx, 0
 	int 70
 	
-	mov ecx, eax
-	mov eax, SYSCALL_CONSOLE
-	mov ebx, CONSOLE_PUTDEC
-	int 70
-	
-	mov eax, SYSCALL_CONSOLE
-	mov ebx, CONSOLE_PUTS
-	mov ecx, newline
-	int 70
-	
-	xor eax, eax
-	xor ebx, ebx
-	int 70
-
 [section .data]
 
-hello_world_text: db "Hello, world ", 0
+hello_world_text: db "Hello, world v1 asm %d", 0xa, 0
 newline: db 0xa, 0

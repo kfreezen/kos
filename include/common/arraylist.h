@@ -33,6 +33,8 @@ ALIterator* ALGetItr(ArrayList* list);
 void ALItrReset(ALIterator* itr);
 Bool ALItrHasNext(ALIterator* itr);
 void* ALItrNext(ALIterator* itr);
-void ALFreeIterator(ALIterator* itr);
+void ALFreeItr(ALIterator* itr);
+void ALFreeList(ArrayList* list);
 
+#define ALFreeIterator(a) ALFreeItr(a)
 #endif

@@ -70,7 +70,14 @@ void Bitset_Resize(Bitset* bits, int size) {
 	memcpy(bitsData, bits->bitData, size/32*sizeof(UInt32));
 	
 	bits->length = size/32;
+	
+	kfree(bits->bitData);
 	bits->bitData = bitsData;
+}
+
+void Bitset_Free(Bitset* bits) {
+	kfree(bits->bitData);
+	kfree(bits);
 }
 
 int Bitset_Set(Bitset* bits, UInt32 idx, int value) {

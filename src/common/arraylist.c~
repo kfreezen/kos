@@ -1,5 +1,6 @@
 #include <common/arraylist.h>
 #include <kheap.h>
+#include <print.h>
 
 #define ARRAYLIST_DEFAULT_START_CAPACITY 8
 
@@ -84,4 +85,61 @@ void* ALGetPtr(ArrayList* list, int idx) {
 
 UInt32 ALGetInt(ArrayList* list, int idx) {
 	return (UInt32) ALGetPtr(list, idx);
+}
+
+ALIterator* ALGetItr(ArrayList* list) {
+	ALIterator* itr = (ALIterator*) kalloc(sizeof(ALIterator));
+	itr->list = list;
+	ALItrReset(itr);
+	
+	return itr;
+}
+
+void ALItrReset(ALIterator* itr) {
+	itr->idx = 0;
+	itr->nextIdx = -1;
+}
+
+Bool ALItrHasNext(ALIterator* itr) {
+	void** listData = (void**) itr->list->listData;
+	int i = itr->idx;
+	
+	if(itr->nextIdx==-1) {
+		for(i=itr->idx+1; i<itr->list->length; i++) {
+			if(Bitset_Test(itr->list->bits, i)) {
+				itr->nextIdx = i;
+				break;
+			}
+		}
+	}
+	
+	if(itr->nextIdx == -1) {
+		return FALSE;
+	} else {
+		return TRUE;
+	}
+}
+
+void* ALItrNext(ALIterator* itr) {
+	if(itr->nextIdx==-1) {
+		if(!ALItrHasNext(itr)) {
+			return NULL;
+		}
+	}
+	
+	void** listData = (void**) itr->list->listData;
+	void* tmp = listData[itr->nextIdx];
+	itr->idx = itr->nextIdx;
+	itr->nextIdx = -1;
+	return tmp;
+}
+
+void ALFreeIterator(ALIterator* itr) {
+	kfree(itr);
+}
+
+void ALFreeList(ArrayList* list) {
+	kfree(list->allocatedListPtr);
+	Bitset_Free(list->bits);
+	kfree(list);
 }

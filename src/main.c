@@ -26,6 +26,7 @@
 #include <graphics.h>
 #include <cli_ui.h>
 #include <error.h>
+#include <ata.h>
 
 #define PIT_MSTIME 20
 
@@ -71,11 +72,11 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	
 	// Set up our new stack here.
 	//UInt32 stack = (UInt32) kmalloc_a(8192, TRUE);
-	MultibootHeader* mboot_hdr = kmalloc(sizeof(MultibootHeader));
-	memcpy(mboot_hdr, mboot, sizeof(MultibootHeader));
+	MultibootHeader* mboot_hdr = mboot; //kmalloc(sizeof(MultibootHeader));
+	//memcpy(mboot_hdr, mboot, sizeof(MultibootHeader));
 	
 	//new_start(stack, mboot_hdr);
-	kprintf("kOS v0.6.3\n");
+	kprintf("kOS v0.7.1\n");
 	
 	GDT_Init();
 	IDT_Init();
@@ -100,11 +101,15 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	
 	DumpPCIDeviceData();
 	
+	ATA_Init();
+	//ATA_EnumerateDevices();
+	
 	kprintf("Keyboard Init... ");
-	KB_Init(1);
+	KB_Init(0);
 	kprintf("[ok]\n");
 	
 	InitTasking();
+	
 	
 	FAT12_Context* context = FAT12_GetContext(FloppyGetDevice());
 	FAT12_File* file = FAT12_GetFile(context, "helloworld");
@@ -117,7 +122,7 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	if(elf->error) {
 		kprintf("ELF Parse error:  %s\n", GetElfErrors()[elf->error]);
 	}
-	//CreateTask(elf->start, elf->dir);
+	CreateTask(elf->start, elf->dir);
 	
 	kprintf("Kernel init done...\n");
 	
