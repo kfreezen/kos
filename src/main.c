@@ -64,8 +64,6 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	CLI_Init();
 	Cls();
 	
-	//PutString("kOS v0.5.2\n");
-	
 	UInt32 initrd_end = *(UInt32*)(mboot->mods_addr+4);
 	
 	placement_address = (Pointer) initrd_end;
@@ -76,7 +74,7 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	//memcpy(mboot_hdr, mboot, sizeof(MultibootHeader));
 	
 	//new_start(stack, mboot_hdr);
-	kprintf("kOS v0.7.1\n");
+	kprintf("kOS v0.6.5\n");
 	
 	GDT_Init();
 	IDT_Init();
@@ -88,10 +86,6 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	init_kheap();
 	InitPaging((mboot_hdr->mem_lower+mboot_hdr->mem_upper)&~3);
 	InitKernelHeap();
-	
-	//setKernelHeap(createHeap(0x80000));
-	
-	//asm volatile("int $8");
 	
 	FloppyInit();
 	
@@ -109,7 +103,6 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	kprintf("[ok]\n");
 	
 	InitTasking();
-	
 	
 	FAT12_Context* context = FAT12_GetContext(FloppyGetDevice());
 	FAT12_File* file = FAT12_GetFile(context, "helloworld");

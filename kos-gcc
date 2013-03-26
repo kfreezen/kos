@@ -2,4 +2,4 @@
 
 CFLAGS="-m32 -I libc/include -nostdlib -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs"
 
-gcc $CFLAGS $@ libc/libc.a
+gcc $CFLAGS $@ -L libc -lc

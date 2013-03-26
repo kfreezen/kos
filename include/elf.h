@@ -42,7 +42,7 @@ typedef struct {
 	Elf32_Word sh_entsize;
 } Elf32_Shdr;
 
-typedef struct {
+struct Elf32_Phdr {
 	Elf32_Word p_type;
 	Elf32_Off p_offset;
 	Elf32_Addr p_vaddr;
@@ -51,7 +51,9 @@ typedef struct {
 	Elf32_Word p_memsz;
 	Elf32_Word p_flags;
 	Elf32_Word p_align;
-} Elf32_Phdr;
+} __attribute__((packed));
+
+typedef struct Elf32_Phdr Elf32_Phdr;
 
 typedef struct {
 	int error;

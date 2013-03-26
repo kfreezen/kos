@@ -30,4 +30,8 @@ void SetColorAttribute(UInt8 c);
 Error GetError();
 
 void SetLineColor(int line, UInt8 color);
+
+void EnablePrintingToStdout();
+void DisablePrintingToStdout();
+
 #endif

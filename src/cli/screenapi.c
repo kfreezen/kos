@@ -3,6 +3,8 @@
 #include <vga.h>
 #include <cli_ui.h>
 
+int stdout_enable = true;
+
 UInt32 framebuffer = 0x0;
 
 const Int32 DEFAULT_WIDTH = 80;
@@ -20,6 +22,14 @@ inline void SetError(Error e) { error = e; }
 
 inline Int32 Coor(int x, int y) {
 	return (x+(y*screenWidth));
+}
+
+void EnablePrintingToStdout() {
+	stdout_enable = true;
+}
+
+void DisablePrintingToStdout() {
+	stdout_enable = false;
 }
 
 void CLI_SetTextMode(int hi_res) {

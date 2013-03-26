@@ -8,6 +8,7 @@
 #define LEFT_SHIFT_SCANCODE 0x2a
 
 #define KB_SYS_POLLCHAR 0x0
+#define KB_SYS_GETCHAR 0x1
 
 void KB_Init(int ne);
 void SetNoEcho(int ne);

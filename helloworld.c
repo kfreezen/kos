@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <sys/syscalls.h>
+#include <stdio.h>
 
 /*
 void _start() {
@@ -11,7 +11,7 @@ void _start() {
 }*/
 
 void _start() {
-	//printf("Hello, world v1 %d\n", syscall2(SYSCALL_TASK, TASK_GETPID));
-	puts("Hello, world v1\n");
+	syscall3(SYSCALL_CONSOLE, CONSOLE_PUTS, "Hello, world0\n");
+	puts("Hello, world 234");
 	syscall2(SYSCALL_EXIT, 0);
 }

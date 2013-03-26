@@ -37,6 +37,8 @@ int ISR_Init();
 #define IRQ14 46
 #define IRQ15 47
 
+// TODO:  Simplify SYSCALL_CONSOLE and take out the PUTHEX and PUTDEC
+
 #define SYSCALL_EXIT 0x0
 #define SYSCALL_CONSOLE 0x1
 	#define CONSOLE_PUTS 0x0

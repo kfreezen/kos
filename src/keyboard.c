@@ -153,6 +153,8 @@ Byte KB_GetChar() {
 }
 
 void kb_syscall(Registers* regs) {
+	asm volatile("sti");
+	
 	switch(regs->ebx) {
 		case KB_POLLCH:
 			regs->eax = KB_PollChar();
@@ -160,6 +162,10 @@ void kb_syscall(Registers* regs) {
 			
 			break;
 		
+		case KB_GETCH:
+			regs->eax = KB_GetChar();
+			break;
+			
 		default:
 			regs->eax = 0;
 			break;

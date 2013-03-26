@@ -62,6 +62,11 @@ ELF* Parse_ELF(Pointer executable) {
 	kprintf("e_phnum = %x\n", hdr->e_phnum);
 	#endif
 	
+	if(hdr->e_phentsize != sizeof(Elf32_Phdr)) {
+		kprintf("This loader does not support program headers whose sizes deviate from %d bytes.\n", sizeof(Elf32_Phdr));
+		return NULL;
+	}
+	
 	SwitchPageDirectory(dir);
 	int i;
 	for(i=0; i<hdr->e_phnum; i++) {

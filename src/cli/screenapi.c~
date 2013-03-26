@@ -2,6 +2,9 @@
 
 #include <vga.h>
 #include <cli_ui.h>
+#include <stdio.h>
+
+int stdout_enable = true;
 
 UInt32 framebuffer = 0x0;
 
@@ -20,6 +23,14 @@ inline void SetError(Error e) { error = e; }
 
 inline Int32 Coor(int x, int y) {
 	return (x+(y*screenWidth));
+}
+
+void EnablePrintingToStdout() {
+	stdout_enable = true;
+}
+
+void DisablePrintingToStdout() {
+	stdout_enable = false;
 }
 
 void CLI_SetTextMode(int hi_res) {
@@ -227,8 +238,7 @@ void ClearScreen() {
 	
 	Int32 i;
 	for(i=0; i<maxCoor; i++) {
-		vidmem[i++] = ' ';
-		vidmem[i] = color;
+		PrintChar(' ');
 	}
 }
 

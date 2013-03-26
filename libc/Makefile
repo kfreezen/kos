@@ -9,7 +9,7 @@ CC:=@gcc
 CFLAGS:=-I include -m32 -nostdlib -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs
 AS:=@nasm
 ASFLAGS:=-felf32
-AR:=@ar
+AR:=ar
 ARFLAGS:=rcs
 
 all: $(SOURCES) link
