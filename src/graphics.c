@@ -38,12 +38,6 @@ void BlitImage(Graphics* g, int x, int y, Image* image) {
 }
 
 void SwitchToGraphicsMode() {
-	kprintf("graphics=%x\nPress any key to go into graphics mode.\n", &currentMode);
-	
-	while(!KB_PollChar());
-	
-	kprintf("Graphics mode.\n");
-
 	changeTo320x200_Graphics();
 	currentMode.WritePixel = WritePixel320x200;
 	currentMode.BlitImage = BlitImage320x200;

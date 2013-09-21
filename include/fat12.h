@@ -60,7 +60,7 @@ typedef struct {
 	UInt8* buffer;
 } FileBuffer;
 
-UInt32 FAT12_Read_LL(FAT12_File* node, UInt32 off, UInt32 length, UInt8* buffer);
+int FAT12_Read_LL(FAT12_File* node, UInt32 off, UInt32 length, UInt8* buffer);
 FileBuffer FAT12_Read_FB(FAT12_File* node, UInt32 off, UInt32 length);
 
 FAT12_File* FAT12_GetFile(FAT12_Context* context, const char* file);

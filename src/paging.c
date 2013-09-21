@@ -4,6 +4,8 @@
 #include <print.h>
 #include <debugdef.h>
 
+//#define PAGING_DEBUG
+
 // FIXME:  There is a bug in this file that causes the heap to map to 0x00000000, when it should be mapped after the kernel.
 
 PageDirectory staticKPageDir __attribute__((aligned(0x1000)));
@@ -71,7 +73,7 @@ void FreePage(UInt32 page) {
 
 UInt32 AllocPageBlock() {
 	#ifdef PAGING_DEBUG
-	kprintf("AllocPageBlock() ");
+	//kprintf("AllocPageBlock() ");
 	#endif
 	
 	UInt32 i;
@@ -83,7 +85,7 @@ UInt32 AllocPageBlock() {
 	}
 	
 	#ifdef PAGING_DEBUG
-	kprintf("ret %x,%x,%d\n", i*32, pages->bitData, pages->length);
+	//kprintf("ret %x,%x,%d\n", i*32, pages->bitData, pages->length);
 	#endif
 	
 	return i*32;
@@ -311,7 +313,7 @@ PageTable* createNewPageTable(PageDirectory* dir, void* virtualAddr) {
 
 int MapAllocatedPageBlockTo(PageDirectory* dir, void* virtualAddr, int flags) {
 	#ifdef PAGING_DEBUG
-	kprintf("MapAllocatedPageBlockTo(%x, %x)\n", dir, virtualAddr);
+	//kprintf("MapAllocatedPageBlockTo(%x, %x)\n", dir, virtualAddr);
 	#endif
 	
 	if(dir==NULL) {
@@ -358,7 +360,7 @@ int MapAllocatedPageBlockTo(PageDirectory* dir, void* virtualAddr, int flags) {
 		int j;
 		for(j=0; j<(32-i); j++) {
 			if(table->t[pt_index+i]&PAGE_PRESENT) {
-				kprintf("ERROR:  Page %d in page block is already mapped.\n", i);
+				kprintf("ERROR:  Page %d in page block is already mapped.2\n", i);
 				return -1;
 			}
 		}

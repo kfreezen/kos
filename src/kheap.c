@@ -59,6 +59,7 @@ void kfree(Pointer p) {
 
 Pointer kalloc(UInt32 size) {
 	if(kHeap==NULL) {
+		kprintf("kHeap is NULL.  You can't do that.\n");
 		return 0;
 	} else {
 		return heap_alloc(kHeap, size);
@@ -67,6 +68,7 @@ Pointer kalloc(UInt32 size) {
 
 Pointer kalloc_ex(UInt32 size, Bool pg_align, UInt32* phys) {
 	if(kHeap==NULL) {
+		kprintf("kHeap is NULL.  You can't do that.\n");
 		return 0;
 	} else {
 		Pointer p = heap_alloc_ex(kHeap, size, pg_align);
@@ -286,6 +288,7 @@ void* heap_alloc_ex(Heap* heap, UInt32 size, Bool pg_align) {
 		return (void*) ((unsigned)header+sizeof(HeapHeader));
 	}
 	
+	kprintf("Out of memory. or something like that.\n");
 	return 0;
 }
 
@@ -304,7 +307,7 @@ void unifyRight(Heap* heap, HeapHeader* header) {
 		HeapFooter* footer = header->footer;
 		if((unsigned)footer+sizeof(HeapHeader)+sizeof(HeapFooter)<=(unsigned)heap->end) {
 			HeapHeader* rightHeader = (HeapHeader*)((void*)footer+sizeof(HeapFooter));
-			if((rightHeader->magic_flags&0xFFFF0000)!=HEAP_MAGIC && rightHeader->magic_flags!=HEAP_DESTROYED_MAGIC) {
+			if((rightHeader->magic_flags&0xFFFF0000)!=HEAP_MAGIC) {
 				kprintf("rightHeader=%x. rightHeader magic invalid.\n", rightHeader);
 			} else if(rightHeader->magic_flags&HEAP_FREE) {
 				// footer is destroyed.
@@ -316,8 +319,6 @@ void unifyRight(Heap* heap, HeapHeader* header) {
 				#endif
 			
 				rightHeader->footer->header = header;
-			
-				rightHeader->magic_flags = HEAP_DESTROYED_MAGIC;
 			
 				// FIXME I don't like having to use two magics. this code should work without using two magics.
 			}
@@ -337,7 +338,6 @@ void unifyLeft(Heap* heap, HeapHeader* header) {
 				// header is destroyed.
 				leftHeader->footer = footer;
 				footer->header = leftHeader;
-				header->magic_flags = HEAP_DESTROYED_MAGIC;
 			}
 		}
 	}

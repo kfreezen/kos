@@ -9,7 +9,7 @@ Pointer kmalloc_ap(int sz, UInt32* phys);
 Pointer kmalloc_p(int sz, UInt32* phys);
 
 #define HEAP_MAGIC 0xF00D0000
-#define HEAP_DESTROYED_MAGIC 0x0DE52205
+//#define HEAP_DESTROYED_MAGIC 0x0DE52205
 
 #define HEAP_FLAGS_MASK 0x0000FFFF
 

@@ -10,6 +10,7 @@
 char debug_gets_buffer[512];
 int dbg_buf_itr = 0;
 
+/*
 char* Debug_GetString() {
 	for(;;) {
 		char tmp = KB_GetChar();
@@ -86,12 +87,6 @@ void StartDebugger() {
 	
 	EnableCliUI();
 	
-	/*CreateBorder(GetTerminalArea().r);
-	
-	SwitchTerminalArea(DUMP_CONSOLE);
-	CreateBorder(GetTerminalArea().r);
-	*/
-	
 	SwitchTerminalArea(DEBUG_CONSOLE);
 	
 	SetTitle("Kernel Debugger");
@@ -150,4 +145,4 @@ void StartDebugger() {
 	}
 	
 	asm volatile("cli");
-}
+}*/

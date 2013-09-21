@@ -11,7 +11,7 @@ S_SOURCES:=$(patsubst %.s, %.o, $(S_SRC))
 SOURCES:=$(S_SOURCES) $(C_SOURCES)
 
 CC:=@gcc
-CFLAGS:=-I include -I src/tests -m32 -nostdlib -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -Wall
+CFLAGS:=-I include -m32 -nostdlib -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -Wall
 AS:=@nasm
 ASFLAGS:=-felf32
 LD:=@ld

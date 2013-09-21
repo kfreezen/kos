@@ -97,7 +97,11 @@ ALIterator* ALGetItr(ArrayList* list) {
 
 void ALItrReset(ALIterator* itr) {
 	itr->idx = 0;
-	itr->nextIdx = -1;
+	// itr->nextIdx = -1;
+	// Now I have no clue why I kept setting itr->nextIdx to -1
+	// but I suppose I had a use case for it that I will find
+	// someday.
+	itr->nextIdx = 0;
 }
 
 Bool ALItrHasNext(ALIterator* itr) {
@@ -111,8 +115,12 @@ Bool ALItrHasNext(ALIterator* itr) {
 				break;
 			}
 		}
+	} else {
+		if(itr->nextIdx >= itr->list->length) {
+			return FALSE;
+		}
 	}
-	
+
 	if(itr->nextIdx == -1) {
 		return FALSE;
 	} else {
@@ -130,7 +138,8 @@ void* ALItrNext(ALIterator* itr) {
 	void** listData = (void**) itr->list->listData;
 	void* tmp = listData[itr->nextIdx];
 	itr->idx = itr->nextIdx;
-	itr->nextIdx = -1;
+	itr->nextIdx++;
+	// itr->nextIdx = -1;
 	return tmp;
 }
 

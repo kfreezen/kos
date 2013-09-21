@@ -27,6 +27,7 @@
 #include <cli_ui.h>
 #include <error.h>
 #include <ata.h>
+#include <dev.h>
 
 #define PIT_MSTIME 20
 
@@ -74,7 +75,7 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	//memcpy(mboot_hdr, mboot, sizeof(MultibootHeader));
 	
 	//new_start(stack, mboot_hdr);
-	kprintf("kOS v0.6.5\n");
+	kprintf("kOS v0.6.8\n");
 	
 	GDT_Init();
 	IDT_Init();
@@ -87,6 +88,7 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	InitPaging((mboot_hdr->mem_lower+mboot_hdr->mem_upper)&~3);
 	InitKernelHeap();
 	
+	
 	FloppyInit();
 	
 	kprintf("Scanning PCI Devices... ");
@@ -98,27 +100,19 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	ATA_Init();
 	//ATA_EnumerateDevices();
 	
+	VFS_Init();
+	DevFS_Init();
+
 	kprintf("Keyboard Init... ");
 	KB_Init(0);
 	kprintf("[ok]\n");
 	
-	InitTasking();
-	
-	FAT12_Context* context = FAT12_GetContext(FloppyGetDevice());
-	FAT12_File* file = FAT12_GetFile(context, "helloworld");
-	FileBuffer fileBuf = FAT12_Read_FB(file, 0,0);
-	
-	kprintf("fileBuf.buffer=%x\n", fileBuf.buffer);
-	
-	ELF* elf = Parse_ELF(fileBuf.buffer);
-	
-	if(elf->error) {
-		kprintf("ELF Parse error:  %s\n", GetElfErrors()[elf->error]);
-	}
-	CreateTask(elf->start, elf->dir);
-	
 	kprintf("Kernel init done...\n");
 	
+	// Open keyboard device
+	VFS_Node* kb = GetNodeFromPath("/dev/keyboard");
+	kprintf("kb->name=%s\n", kb->name);
+
 	return 0;
 }
 
@@ -139,57 +133,4 @@ void thread(char c) {
 	}
 }
 
-#else
-#include <KOSTypes.h>
-
-#include <print.h>
-#include <gdt.h>
-#include <idt.h>
-//#include <paging.h>
-#include <multiboot.h>
-#include <kheap.h>
-#include <keyboard.h>
-#include <vfs.h>
-#include <isr.h>
-#include <rtc.h>
-#include <kheap.t.h>
-#include <test.h>
-
-extern Pointer placement_address;
-
-UInt32 initial_esp;
-
-MultibootHeader* boot;
-UInt32 initrdloc;
-
-Byte iKernel[2048];
-Byte iKernelOut[2048];
-
-
-int kmain(UInt32 initial_stack, MultibootHeader* hdr, UInt32 mboot_magic) {
-	CLI_Init();
-	ClearScreen();
-	
-	UInt32 initrd_loc = *((UInt32*)hdr->mods_addr);
-	UInt32 initrd_end = *(UInt32*)(hdr->mods_addr+4);
-	
-	placement_address = (Pointer) initrd_end;
-	
-	//new_start(stack, mboot_hdr);
-	kprintf("kos_test\n");
-	
-	GDT_Init();
-	IDT_Init();
-	ISR_Init();
-	asm volatile("sti");
-	
-	PIT_Init(20);
-	
-	init_kheap();
-	Heap* heap = createHeap(HEAP_MIN_SIZE);
-	setKernelHeap(heap);
-	
-	int kheap_test = testKHeap();
-	kprintf("%s\n", (kheap_test==SUCCESS) ? "KHEAP_SUCCESS" : "KHEAP_FAILURE");
-}
 #endif

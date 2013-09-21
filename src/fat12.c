@@ -4,6 +4,8 @@
 #include <print.h>
 #include <debugdef.h>
 
+//#define FAT12_DEBUG
+
 #define FAT12_CONTEXTS_NUM 32
 FAT12_Context* FAT12_Contexts[FAT12_CONTEXTS_NUM];
 int nextContextToAdd = 0;
@@ -106,6 +108,8 @@ FAT12_File* FAT12_GetFile(FAT12_Context* context, const char* file) {
 			
 			if(lfnEntry->order&0xF0) {
 				// Done.
+				
+				// OK, this converts the 2-byte character lfnameBuffer into a 1-byte character buffer.
 				int j;
 				for(j=0; lfnameBuffer[j]!=0; j++) {
 					lfnameBuffer2[j] = (char) lfnameBuffer[j];
@@ -113,13 +117,22 @@ FAT12_File* FAT12_GetFile(FAT12_Context* context, const char* file) {
 				
 				lfnameBuffer2[j] = 0;
 				
+				// So now we need to check to see if this is the long file name entry.
+				if(!strcmp(lfnameBuffer2, file)) {
+					// If it checks out, we want to load it.
+					#ifdef FAT12_DEBUG
+					kprintf("lfnameBuffer2=%s\n", lfnameBuffer2);
+					#endif
+					
+					doneWithName = true;
+					i++;
+				}
+				
 				#ifdef FAT12_DEBUG
 				kprintf("lfname=%s\n", lfnameBuffer2);
 				#endif
 				
 				//memset(lfnameBuffer, 0, 256);
-				doneWithName = true;
-				i++;
 			}
 		}
 		
@@ -132,6 +145,7 @@ FAT12_File* FAT12_GetFile(FAT12_Context* context, const char* file) {
 		kprintf("name_debug=%s, attr=%x\n", name_debug, entries[i].attribute);
 		#endif
 		
+		// Here we have two checks for the 8.3 or for the long file name.
 		if(strncmp(file, 11, entries[i].name)==0 || (doneWithName && strcmp(file, lfnameBuffer2)==0)) {
 			FAT12_File* fat12_file = (FAT12_File*)kalloc(sizeof(FAT12_File));
 			fat12_file->context = context;
@@ -154,7 +168,11 @@ FAT12_File* FAT12_GetFile(FAT12_Context* context, const char* file) {
 
 Byte readSectorBuffer[512];
 
-UInt32 FAT12_Read_LL(FAT12_File* node, UInt32 offset, UInt32 length, UInt8* buf) {
+int FAT12_Read_LL(FAT12_File* node, UInt32 offset, UInt32 length, UInt8* buf) {
+	if(node == NULL) {
+		return -1;
+	}
+	
 	#ifdef FAT12_DEBUG
 	kprintf("FAT12_Read_LL(%x, %x, %x, %x)\n", node, offset, length, buf);
 	#endif
@@ -229,6 +247,13 @@ FileBuffer FAT12_Read_FB(FAT12_File* node, UInt32 off, UInt32 length) {
 	#ifdef FAT12_DEBUG
 	kprintf("FAT12_Read_FB(%x, %x, %x)\n", node, off, length);
 	#endif
+	
+	if(node == NULL) {
+		FileBuffer fb;
+		fb.length = 0;
+		fb.buffer = NULL;
+		return fb;
+	}
 	
 	FileBuffer fb;
 	fb.length = node->data.fileSize;

@@ -5,6 +5,7 @@
 #include <print.h>
 #include <fat12.h>
 #include <floppy.h>
+#include <dev.h>
 
 int curmap=0;
 int nummaps=0;
@@ -31,6 +32,69 @@ void SetNoEcho(int ne) {
 
 void SetNonblocking(int nb) {
 	nonblocking = (nb>0) ? 1 : 0;
+}
+
+#define KB_READ_SIZE 32
+
+int GetAvailableBytes() {
+	int tmp = kb_buf_itr;
+
+	if(tmp < kb_buf_tail) {
+		tmp += KB_BUF_SIZE;
+	}
+
+	return tmp - kb_buf_tail;
+}
+
+int kb_read(char* userBuf, int len, VFS_Node* node) {
+	int toRead;
+
+	if(node->options.flags&O_NONBLOCKING) {
+		toRead = (GetAvailableBytes() < len) ? GetAvailableBytes() : len;
+	} else {
+		toRead = len;
+	}
+
+	// We want to split the reads into 32-char or smaller chunks.
+	int reads = toRead / KB_READ_SIZE;
+	int last_read_len = toRead % KB_READ_SIZE;
+
+	// We may need to split the read between the last and the first of the buffer
+	int userBufItr = 0;
+
+	while(reads) {
+		int readBeginning = 0;
+		int readEnd = KB_READ_SIZE;
+
+		while(GetAvailableBytes() < KB_READ_SIZE) {}
+
+		if(kb_buf_tail+readEnd >= KB_BUF_SIZE) {
+			readEnd = KB_BUF_SIZE - kb_buf_tail; // ?
+			readBeginning = KB_READ_SIZE - readEnd;
+		}
+
+		memcpy(&userBuf[userBufItr], &KB_Buffer[kb_buf_tail], readEnd);
+		userBufItr += readEnd;
+
+		kb_buf_tail += readEnd;
+
+		if(kb_buf_tail >= KB_BUF_SIZE) {
+			kb_buf_tail = 0;
+			memcpy(&userBuf[userBufItr], &KB_Buffer[kb_buf_tail], readBeginning);
+			userBufItr += readBeginning;
+		}
+
+		reads --;
+	}
+
+	while(GetAvailableBytes() < last_read_len) {
+
+	}
+
+	memcpy(&userBuf[userBufItr], &KB_Buffer[kb_buf_tail], last_read_len);
+	userBufItr += last_read_len;
+
+	return userBufItr+1;
 }
 
 void KPutChar(char c) {
@@ -78,8 +142,11 @@ static void kb_callback(Registers regs) {
 	outb(0x20, 0x20);
 }
 
+#define KEYBOARD_DEV_NAME "keyboard"
+
 void KB_Init(int ne) {
 	wait_press = 1;
+	
 	
 	FAT12_Context* context = FAT12_GetContext(FloppyGetDevice());	
 	FAT12_File* file = FAT12_GetFile(context, "kbmaps.dat");
@@ -89,6 +156,7 @@ void KB_Init(int ne) {
 		size = size&(~0x1FF);
 		size+=0x200;
 	}
+	
 	
 	FileBuffer buffer = FAT12_Read_FB(file, 0, 0);
 	UInt8* buf = buffer.buffer;
@@ -105,7 +173,7 @@ void KB_Init(int ne) {
 	} else {
 		int i;
 		for(i=0; i<num; i++) {
-			maps[i] = kbmaps[i];
+			memcpy(&maps[i], &kbmaps[i], sizeof(KB_Map));
 		}
 	}
 	
@@ -122,8 +190,18 @@ void KB_Init(int ne) {
 	
 	inb(0x60);
 	registerIntHandler(33, kb_callback);
+
+	// Set up our device file here.
+	DeviceData kb_device;
+	kb_device.name = kalloc(strlen(KEYBOARD_DEV_NAME)+1);
+	strcpy(kb_device.name, KEYBOARD_DEV_NAME);
+	kb_device.write = NULL;
+	kb_device.read = kb_read;
+
+	RegisterDevice(&kb_device);
 }
 
+/*
 void WaitForKeypress() {
 	while(wait_press) {}
 	wait_press=1;
@@ -150,11 +228,12 @@ Byte KB_GetChar() {
 		WaitForKeypress();
 		return KB_GetChar();
 	}
-}
+}*/
 
 void kb_syscall(Registers* regs) {
 	asm volatile("sti");
 	
+	/*
 	switch(regs->ebx) {
 		case KB_POLLCH:
 			regs->eax = KB_PollChar();
@@ -169,5 +248,5 @@ void kb_syscall(Registers* regs) {
 		default:
 			regs->eax = 0;
 			break;
-	}
+	}*/
 }
