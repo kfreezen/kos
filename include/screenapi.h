@@ -13,6 +13,11 @@
 #define LO_RES 0
 
 #define DEFAULT_COLOR_ATTRIBUTE 0x07
+#define SCREEN_DEV_NAME "screen"
+
+#define SCREEN_WRITE_ESCAPE -1
+#define CMD_CLEARSCREEN 0x00
+#define CMD_MOVE 0x01
 
 int CLI_Init();
 void CLI_SetTextMode();
@@ -33,5 +38,7 @@ void SetLineColor(int line, UInt8 color);
 
 void EnablePrintingToStdout();
 void DisablePrintingToStdout();
+
+int Screen_Init();
 
 #endif

@@ -7,6 +7,8 @@
 #include <floppy.h>
 #include <dev.h>
 
+//#define KEYBOARD_DEBUG
+
 int curmap=0;
 int nummaps=0;
 KB_Map* maps;
@@ -47,6 +49,10 @@ int GetAvailableBytes() {
 }
 
 int kb_read(char* userBuf, int len, VFS_Node* node) {
+	#ifdef KEYBOARD_DEBUG
+	kprintf("kb_read(%x, %x, %x)\n", userBuf, len, node);
+	#endif
+
 	int toRead;
 
 	if(node->options.flags&O_NONBLOCKING) {
@@ -73,6 +79,10 @@ int kb_read(char* userBuf, int len, VFS_Node* node) {
 			readBeginning = KB_READ_SIZE - readEnd;
 		}
 
+		#ifdef KEYBOARD_DEBUG
+		kprintf("readEnd = %d, readBeginning = %d\n", readEnd, readBeginning);
+		#endif
+
 		memcpy(&userBuf[userBufItr], &KB_Buffer[kb_buf_tail], readEnd);
 		userBufItr += readEnd;
 
@@ -90,6 +100,10 @@ int kb_read(char* userBuf, int len, VFS_Node* node) {
 	while(GetAvailableBytes() < last_read_len) {
 
 	}
+
+	#ifdef KEYBOARD_DEBUG
+	kprintf("last_read_len=%d", last_read_len);
+	#endif 
 
 	memcpy(&userBuf[userBufItr], &KB_Buffer[kb_buf_tail], last_read_len);
 	userBufItr += last_read_len;
@@ -193,10 +207,16 @@ void KB_Init(int ne) {
 
 	// Set up our device file here.
 	DeviceData kb_device;
+	memset(&kb_device, 0, sizeof(DeviceData));
+
 	kb_device.name = kalloc(strlen(KEYBOARD_DEV_NAME)+1);
 	strcpy(kb_device.name, KEYBOARD_DEV_NAME);
 	kb_device.write = NULL;
 	kb_device.read = kb_read;
+
+	#ifdef KEYBOARD_DEBUG
+	kprintf("kb.read=%x\n", kb_read);
+	#endif
 
 	RegisterDevice(&kb_device);
 }

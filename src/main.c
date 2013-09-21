@@ -75,7 +75,6 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	//memcpy(mboot_hdr, mboot, sizeof(MultibootHeader));
 	
 	//new_start(stack, mboot_hdr);
-	kprintf("kOS v0.6.8\n");
 	
 	GDT_Init();
 	IDT_Init();
@@ -88,7 +87,11 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	InitPaging((mboot_hdr->mem_lower+mboot_hdr->mem_upper)&~3);
 	InitKernelHeap();
 	
+	VFS_Init();
+	DevFS_Init();
 	
+	Screen_Init();
+
 	FloppyInit();
 	
 	kprintf("Scanning PCI Devices... ");
@@ -99,20 +102,16 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	
 	ATA_Init();
 	//ATA_EnumerateDevices();
-	
-	VFS_Init();
-	DevFS_Init();
 
 	kprintf("Keyboard Init... ");
 	KB_Init(0);
 	kprintf("[ok]\n");
 	
 	kprintf("Kernel init done...\n");
-	
-	// Open keyboard device
-	VFS_Node* kb = GetNodeFromPath("/dev/keyboard");
-	kprintf("kb->name=%s\n", kb->name);
 
+	Cls();
+	kprintf("kOS v0.6.10\n");
+	
 	return 0;
 }
 

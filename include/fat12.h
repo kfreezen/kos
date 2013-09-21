@@ -53,6 +53,12 @@ typedef struct {
 typedef struct {
 	FAT12_Context* context;
 	DirEntry data;
+	ArrayList* TYPE(DirEntry) files;
+} FAT12_Directory;
+
+typedef struct {
+	FAT12_Context* context;
+	DirEntry data;
 } FAT12_File;
 
 typedef struct {
@@ -95,5 +101,15 @@ int FAT12_GetFreeClusterFromFat(FAT12_Context* context);
 int FAT12_GetFreeDirectoryEntry(FAT12_Context* context);
 void FAT12_WriteDirectoryEntry(FAT12_Context* context, DirEntry* entry);
 void FAT12_WriteCluster(FAT12_Context* context, int cluster, Byte* buffer);
+
+// VFS Functions
+
+/*
+Mounts a FAT12 context at a certain path.
+*/
+int FAT12_Init(FAT12_Context* context, const char* parentPath, const char* mountpointName);
+
+ArrayList* FAT12_ListFiles(VFS_Node* dir);
+VFS_Node* FAT12_GetNode(VFS_Node* node, const char* name);
 
 #endif

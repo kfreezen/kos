@@ -3,6 +3,7 @@
 
 #include <KOSTypes.h>
 #include <screenapi.h>
+#include <vfs.h>
 
 int PutChar(Char c);
 int PutCharEx(Char c, Bool str_use);
@@ -21,5 +22,7 @@ void kprintf(const char* fmt, ...);
 
 void Cls();
 void ClsEx(UInt8 color);
+
+void SetPrintStream(VFS_Node* printStream);
 
 #endif

@@ -2,6 +2,8 @@
 
 #include <vga.h>
 #include <cli_ui.h>
+#include <vfs.h>
+#include <dev.h>
 
 int stdout_enable = true;
 
@@ -108,6 +110,7 @@ void scroll(int lines) {
 	y=screenHeight-lines;
 }
 
+// This only sets the "barebones" driver up, call ScreenInit for a device file.
 int CLI_Init() { // TODO:  Figure out a way in which to find the width and height
 	if(isInit == true) {
 		SetError(ERROR_ALREADY_INITIALIZED);
@@ -122,6 +125,64 @@ int CLI_Init() { // TODO:  Figure out a way in which to find the width and heigh
 	}
 	
 	return 0;
+}
+
+/* The escape byte is 0xFF, followed by a command and its data.
+	0x00:  CLEARSCREEN
+		1 byte:  color
+	0x01:  MOVE
+		4 bytes:  2 shorts representing x and y
+		short[0] = x
+		short[1] = y
+		sample for Move(x,y)
+		{SCREEN_WRITE_ESCAPE, MOVE, x&0xFF, x>>8, y&0xFF, y>>8}
+
+*/
+int ScreenWrite(const char* userBuf, int len, VFS_Node* node) {
+	// This one is refreshingly simple, we just loop through the userBuf
+	int i;
+	for(i=0; i<len; i++) {
+		if(userBuf[i] == SCREEN_WRITE_ESCAPE) {
+			switch(userBuf[++i]) {
+				case SCREEN_WRITE_ESCAPE: {
+					PrintChar(SCREEN_WRITE_ESCAPE);
+				} break;
+
+				case CMD_CLEARSCREEN: {
+					SetColorAttribute(userBuf[++i]);
+					ClearScreen();
+				} break;
+
+				case CMD_MOVE: {
+					short* coord = (short*) &userBuf[++i];
+					Move(coord[0], coord[1]);
+					i+=(sizeof(short)<<1) - 1;
+				} break;
+			}
+		} else {
+			PrintChar(userBuf[i]);
+		}
+	}
+
+	return len;
+}
+
+int Screen_Init() {
+	VFS_Node* screen = GetNodeFromPath("/dev/screen");
+	if(screen == NULL) {
+		DeviceData scrDev;
+
+		memset(&scrDev, 0, sizeof(DeviceData));
+
+		scrDev.name = kalloc(strlen(SCREEN_DEV_NAME)+2);
+		strcpy(scrDev.name, SCREEN_DEV_NAME);
+		scrDev.write = ScreenWrite;
+		scrDev.read = NULL;
+
+		screen = RegisterDevice(&scrDev);
+	}
+
+	SetPrintStream(screen);
 }
 
 int PrintChar(Char c) {

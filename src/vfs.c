@@ -1,5 +1,6 @@
 #include <vfs.h>
 #include <common.h>
+#include <print.h>
 
 //#define VFS_DEBUG
 
@@ -199,6 +200,11 @@ VFS_Node* GetNodeFromPath(const char* path) {
 		} else {
 			VFS_Node* newNode = GetNode(node, tok);
 
+			if(newNode == NULL) {
+				// Doesn't exist, so return NULL.
+				return NULL;
+			}
+			
 			#ifdef VFS_DEBUG
 			kprintf("tok=%s\n", node->name);
 			#endif
@@ -223,6 +229,10 @@ VFS_Node* GetNodeFromPath(const char* path) {
 }
 
 int ReadFile(char* buf, int len, VFS_Node* node) {
+	#ifdef VFS_DEBUG
+	kprintf("node=%x, node->read=%x\n", node, node->read);
+	#endif
+
 	if(node && node->read) {
 		return node->read(buf, len, node);
 	}
@@ -240,4 +250,8 @@ int WriteFile(const char* buf, int len, VFS_Node* node) {
 	}
 
 	return -1;
+}
+
+int LoadDirectory(VFS_Node* dir) {
+	
 }

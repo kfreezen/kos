@@ -269,3 +269,27 @@ FileBuffer FAT12_Read_FB(FAT12_File* node, UInt32 off, UInt32 length) {
 	
 	return fb;
 }
+
+// VFS Functions
+
+int FAT12_Init(FAT12_Context* context, const char* parentPath, const char* mountpointName) {
+	// Get our parent from parentPath
+	VFS_Node* parent = GetNodeFromPath(parentPath);
+	if(parent == NULL) {
+		kprintf("Error in fat12:  parent==NULL, parentPath=%s\n", parentPath);
+	}
+
+	VFS_Node* mount = AddFile(FILE_DIRECTORY, mountpointName, parent);
+	FAT12_Directory* dir = kalloc(sizeof(FAT12_Directory));
+	dir->files = ALCreate();
+	dir->context = context;
+
+	CreateMountPoint(mount, dir,
+		NULL, NULL,
+		FAT12_GetNode, FAT12_ListFiles,
+		NULL, NULL
+	);
+}
+
+ArrayList* FAT12_ListFiles(VFS_Node* dir);
+VFS_Node* FAT12_GetNode(VFS_Node* node, const char* name);

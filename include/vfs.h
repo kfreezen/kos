@@ -4,7 +4,6 @@
 #include <KOSTypes.h>
 #include <device.h>
 #include <kheap.h>
-#include <print.h>
 #include <common/arraylist.h>
 
 // There are 3 types of "files":
@@ -113,6 +112,7 @@ int CreateMountPoint(VFS_Node* node, void* data,
 		write_func write, read_func read
 		);
 
+int LoadDirectory(VFS_Node* dir);
 ArrayList* ListFiles(VFS_Node* dir);
 VFS_Node* GetNode(VFS_Node* node, const char* name);
 

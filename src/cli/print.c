@@ -2,12 +2,26 @@
 
 #include <screenapi.h>
 #include <KOSArgs.h>
+#include <vfs.h>
 
 extern void ClearScreen();
 
+VFS_Node* printStream = NULL;
+
+void SetPrintStream(VFS_Node* stream) {
+	printStream = stream;
+}
+
 int PutCharEx(Char c, Bool no_move_csr) {
-	int ret = PrintChar(c);
-	
+	int ret;
+
+	if(printStream) {
+		// The proper success return is 0 for this PutCharEx
+		ret = !WriteFile(&c, 1, printStream);
+	} else {
+		ret = PrintChar(c);
+	}
+
 	if(no_move_csr == false) {
 		ret |= MoveCursorToCurrentCoordinates();
 	}
@@ -20,7 +34,13 @@ int PutChar(Char c) {
 }
 
 int PutStringEx(String s, Bool no_move_csr) {
-	int ret = PrintString(s);
+	int ret;
+	if(printStream) {
+		ret = !WriteFile(s, strlen(s), printStream);
+	} else {
+		ret = PrintString(s);
+	}
+	
 	ret |= (no_move_csr == false) ? MoveCursorToCurrentCoordinates() : 0;
 	return ret;
 }
@@ -29,11 +49,27 @@ int PutString(String s) {
 	return PutStringEx(s, false);
 }
 
+void _PrintString(String s) {
+	if(printStream) {
+		ScreenWrite(s, strlen(s), printStream);
+	} else {
+		PrintString(s);
+	}
+}
+
+void _PrintChar(Char c) {
+	if(printStream) {
+		ScreenWrite(&c, 1, printStream);
+	} else {
+		PrintChar(c);
+	}
+}
+
 void PutHexEx(UInt32 num, Bool noZeroes, Bool hexIdent) {
 	Int32 tmp;
 	
 	if(hexIdent) {
-		PrintString("0x");
+		_PrintString("0x");
 	}
 	
 	int i;
@@ -45,18 +81,18 @@ void PutHexEx(UInt32 num, Bool noZeroes, Bool hexIdent) {
 		
 		if(tmp >= 0xA) {
 			noZeroes = false;
-			PrintChar((Char) tmp-0xA+'a');
+			_PrintChar((Char) tmp-0xA+'a');
 		} else {
 			noZeroes = false;
-			PrintChar((Char) tmp+'0');
+			_PrintChar((Char) tmp+'0');
 		}
 	}
 	
 	tmp = num & 0xF;
 	if(tmp >= 0xA) {
-		PrintChar(tmp-0xA+'a');
+		_PrintChar(tmp-0xA+'a');
 	} else {
-		PrintChar(tmp+'0');
+		_PrintChar(tmp+'0');
 	}
 	
 	MoveCursorToCurrentCoordinates();
@@ -88,7 +124,7 @@ void PutDec(UInt32 num) {
 	while(i >= 0) {
 		c2[i--] = c[j++];
 	}
-	PrintString(c2);
+	_PrintString(c2);
 	MoveCursorToCurrentCoordinates();
 }
 
@@ -113,13 +149,13 @@ void kprintf(const char* fmt, ...) {
 					
 					switch(fmt[++i]) {
 						case '%':
-							PrintChar('%');
+							_PrintChar('%');
 							i++;
 							break;
 							
 						case 'c': {
 							char c = va_arg(va, char);
-							PrintChar(c);
+							_PrintChar(c);
 							i++;
 							break;
 							
@@ -127,7 +163,7 @@ void kprintf(const char* fmt, ...) {
 						
 						case 's': {
 							char* s = va_arg(va, char*);
-							PrintString(s);
+							_PrintString(s);
 							i++;
 							break;
 						}
@@ -160,7 +196,7 @@ void kprintf(const char* fmt, ...) {
 				break;
 				
 			default:
-				PrintChar(fmt[i++]);
+				_PrintChar(fmt[i++]);
 				break;
 				
 		}
@@ -171,9 +207,17 @@ void kprintf(const char* fmt, ...) {
 }
 
 void ClsEx(UInt8 color) {
-	SetColorAttribute(color);
-	ClearScreen();
-	Move(0,0);
+	if(printStream) {
+		char command[9] = {SCREEN_WRITE_ESCAPE,
+			CMD_CLEARSCREEN, color,
+			SCREEN_WRITE_ESCAPE, CMD_MOVE, 0, 0, 0, 0
+		};
+		ScreenWrite(command, 9, printStream);
+	} else {
+		SetColorAttribute(color);
+		ClearScreen();
+		Move(0,0);
+	}
 }
 
 void Cls() {
