@@ -7,7 +7,7 @@
 #include <floppy.h>
 #include <dev.h>
 
-//#define KEYBOARD_DEBUG
+#define KEYBOARD_DEBUG
 
 int curmap=0;
 int nummaps=0;
@@ -165,7 +165,7 @@ void KB_Init(int ne) {
 	FAT12_Context* context = FAT12_GetContext(FloppyGetDevice());	
 	FAT12_File* file = FAT12_GetFile(context, "kbmaps.dat");
 	
-	int size = file->data.fileSize;
+	int size = file->locationData->fileSize;
 	if(size&0x1ff) {
 		size = size&(~0x1FF);
 		size+=0x200;
@@ -177,11 +177,15 @@ void KB_Init(int ne) {
 	
 	// Read in kbmaps.
 	KB_Map* kbmaps = (KB_Map*) buf;
-	int num = file->data.fileSize/sizeof(KB_Map);
+	int num = file->locationData->fileSize/sizeof(KB_Map);
+	#ifdef KEYBOARD_DEBUG
+	kprintf("num = %x, fileSize=%x\n", num, file->locationData->fileSize);
+	#endif
+
 	maps = kalloc(sizeof(KB_Map)*num);
 	
 	nummaps = num;
-	if(file->data.fileSize%sizeof(KB_Map)) {
+	if(file->locationData->fileSize%sizeof(KB_Map)) {
 		kprintf("kbmaps.dat invalid.\n");
 		return;
 	} else {

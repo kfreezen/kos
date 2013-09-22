@@ -106,6 +106,11 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	kprintf("Keyboard Init... ");
 	KB_Init(0);
 	kprintf("[ok]\n");
+
+	FAT12_Init(FAT12_GetContext(FloppyGetDevice()), "/", "floppy");
+	VFS_Node* floppy = GetNodeFromPath("/floppy");
+	kprintf("floppy=%x\n", floppy);
+	LoadDirectory(floppy);
 	
 	kprintf("Kernel init done...\n");
 

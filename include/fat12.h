@@ -5,15 +5,11 @@
 #include <vfs.h>
 #include <common/arraylist.h>
 
-#define FILE_ATTR_DIR 1<<0 // FIXME:  Deprecated. Use FAT12_ATTR_DIR instead.  TODO: Delete.
-#define FAT12_ATTR_DIR 1<<0
-
 #define FILE_ATTR_LONG_FILE_NAME 0xF // FIXME:  Get rid of all instances of this, then delete.  Use FAT12_LONG_FILENAME
 #define FAT12_LONG_FILENAME 0xF
+#define FAT12_ATTR_DIR 0x10
 
-#define FAT12_EOF 0xFF0
-
-#define ENTRY_ATTR_DIR 0x10
+#define FAT12_EOF 0xFF8
 
 struct __DirEntry {
 	char name[11];
@@ -52,13 +48,8 @@ typedef struct {
 
 typedef struct {
 	FAT12_Context* context;
-	DirEntry data;
-	ArrayList* TYPE(DirEntry) files;
-} FAT12_Directory;
-
-typedef struct {
-	FAT12_Context* context;
-	DirEntry data;
+	DirEntry* locationData;
+	void* data;
 } FAT12_File;
 
 typedef struct {
@@ -110,6 +101,8 @@ Mounts a FAT12 context at a certain path.
 int FAT12_Init(FAT12_Context* context, const char* parentPath, const char* mountpointName);
 
 ArrayList* FAT12_ListFiles(VFS_Node* dir);
-VFS_Node* FAT12_GetNode(VFS_Node* node, const char* name);
 
+VFS_Node* FAT12_AddFile(int fileType, const char* name, VFS_Node* parent);
+VFS_Node* FAT12_GetNode(VFS_Node* node, const char* name);
+int FAT12_LoadDirectory(VFS_Node* dir);
 #endif

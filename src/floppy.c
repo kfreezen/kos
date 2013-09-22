@@ -8,6 +8,8 @@
 #include <fat12.h>
 #include <error.h>
 
+#define FLOPPY_DEBUG
+
 int flpy_error = 0;
 Bool floppy_done = false;
 Bool nec765 = false;

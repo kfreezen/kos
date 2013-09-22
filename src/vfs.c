@@ -253,5 +253,9 @@ int WriteFile(const char* buf, int len, VFS_Node* node) {
 }
 
 int LoadDirectory(VFS_Node* dir) {
-	
+	if(dir && dir->dirload) {
+		return dir->dirload(dir);
+	}
+
+	return -1;
 }
