@@ -468,6 +468,8 @@ VFS_Node* FAT12_AddFile(int fileType, const char* name, VFS_Node* parent) {
 			node->read = parent->read;
 		}
 
+		ALAdd(dirFiles, node);
+		
 		return node;
 	} else {
 		return NULL;

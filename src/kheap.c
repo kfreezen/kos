@@ -345,13 +345,13 @@ void unifyLeft(Heap* heap, HeapHeader* header) {
 
 // FIXME  There is another function that is accessing unpaged memory after this is called.
 void contractHeap(Heap* heap, int amountToLeave) {
-	HeapHeader* lastHeader = ((HeapFooter*)((UInt32)heap->end-sizeof(HeapFooter)))->header;
+	/*HeapHeader* lastHeader = ((HeapFooter*)((UInt32)heap->end-sizeof(HeapFooter)))->header;
 	
 	#ifdef KHEAP_DEBUG
 	kprintf("lastHeader=%x\n", lastHeader);
 	#endif
 	
-	/*if(lastHeader->magic_flags&HEAP_FREE) {
+	if(lastHeader->magic_flags&HEAP_FREE) {
 		UInt32 ptr = (UInt32) heap->end;
 		ptr &= 0xFFFFF000;
 		UInt32 stop_ptr = (UInt32) (heap->start + amountToLeave);

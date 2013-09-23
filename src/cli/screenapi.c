@@ -4,8 +4,7 @@
 #include <cli_ui.h>
 #include <vfs.h>
 #include <dev.h>
-
-int stdout_enable = true;
+#include <print.h>
 
 UInt32 framebuffer = 0x0;
 
@@ -26,21 +25,13 @@ inline Int32 Coor(int x, int y) {
 	return (x+(y*screenWidth));
 }
 
-void EnablePrintingToStdout() {
-	stdout_enable = true;
-}
-
-void DisablePrintingToStdout() {
-	stdout_enable = false;
-}
-
 void CLI_SetTextMode(int hi_res) {
 	set_text_mode(hi_res);
 	
 	screenWidth = (hi_res) ? 90 : 80;
 	screenHeight = (hi_res) ? 60 : 25;
 	framebuffer = get_fb_loc();
-	vidmem = framebuffer;
+	vidmem = (Byte*) framebuffer;
 }
 
 void SaveTerminal(Terminal* term) {
@@ -183,6 +174,8 @@ int Screen_Init() {
 	}
 
 	SetPrintStream(screen);
+
+	return 0;
 }
 
 int PrintChar(Char c) {

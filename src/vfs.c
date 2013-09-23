@@ -55,7 +55,7 @@ VFS_Node* VFS_GetNode(VFS_Node* node, const char* name) {
 	if(isdir(node)) {
 		DirectoryData* dir = (DirectoryData*) node->data;
 
-		ArrayList* TYPE(VFS_Node*) fileList = ((DirectoryData*) node->data)->files;
+		ArrayList* TYPE(VFS_Node*) fileList = dir->files;
 		ALIterator* itr = ALGetItr(fileList);
 		VFS_Node* ret = NULL;
 

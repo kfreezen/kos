@@ -172,7 +172,7 @@ int FloppyInit() {
 	return 0;
 }
 
-void FDC_Calibrate_Internal(int drive, int reset);
+int FDC_Calibrate_Internal(int drive, int reset);
 
 void ResetFloppy() {
 	
@@ -272,7 +272,7 @@ void FDC_ControlMotor(UInt32 drive, Bool toggle) {
 }
 
 int FDC_Calibrate(UInt32 drive) {
-	FDC_Calibrate_Internal(drive, 0);
+	return FDC_Calibrate_Internal(drive, 0);
 }
 
 void* FloppyGetMediaInfo();
@@ -366,7 +366,7 @@ start_readsector:
 		}
 	}
 	
-	Byte st1, st2, end_head_n, end_sct_n, two;
+	/*Byte st1, st2, end_head_n, end_sct_n, two;
 	
 	st0 = read_data();
 	st1 = read_data();
@@ -374,16 +374,16 @@ start_readsector:
 	cyl = read_data();
 	end_head_n = read_data();
 	end_sct_n = read_data();
-	two = read_data();
+	two = read_data();*/
 	
 	#ifdef FLOPPY_DEBUG
 	kprintf("st0 == %x\n", st0);
 	#endif
 	
-	/*int j=0;
+	int j=0;
 	for(j=0; j<7; j++) {
 		read_data();
-	}*/
+	}
 	
 	FDC_SenseInterrupt(&st0, &cyl);
 }
@@ -425,7 +425,7 @@ UInt8* FloppyReadSector(int sectorLBA) {
 	return sectorData;
 }
 
-void FDC_Calibrate_Internal(int drive, int reset) {
+int FDC_Calibrate_Internal(int drive, int reset) {
 	#ifdef FLOPPY_DEBUG
 	kprintf("FDC_Calibrate(%x)\n", drive);
 	#endif

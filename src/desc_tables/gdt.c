@@ -59,7 +59,7 @@ int GDT_InitEx(Bool reinit) {
 	double_fault_tss.esp0 = 0x7c00; // This should be changed.
 	double_fault_tss.iopb_offset = sizeof(TSS);
 	//double_fault_tss.cr3 = staticKPageDir;
-	double_fault_tss.eip = &isr8;
+	double_fault_tss.eip = (UInt32) &isr8;
 	double_fault_tss.cs = 0x8;
 	double_fault_tss.ds = 0x10;
 	double_fault_tss.es = double_fault_tss.fs = double_fault_tss.gs = 0x10;

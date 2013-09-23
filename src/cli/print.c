@@ -51,7 +51,7 @@ int PutString(String s) {
 
 void _PrintString(String s) {
 	if(printStream) {
-		ScreenWrite(s, strlen(s), printStream);
+		WriteFile(s, strlen(s), printStream);
 	} else {
 		PrintString(s);
 	}
@@ -59,7 +59,7 @@ void _PrintString(String s) {
 
 void _PrintChar(Char c) {
 	if(printStream) {
-		ScreenWrite(&c, 1, printStream);
+		WriteFile(&c, 1, printStream);
 	} else {
 		PrintChar(c);
 	}
@@ -212,7 +212,7 @@ void ClsEx(UInt8 color) {
 			CMD_CLEARSCREEN, color,
 			SCREEN_WRITE_ESCAPE, CMD_MOVE, 0, 0, 0, 0
 		};
-		ScreenWrite(command, 9, printStream);
+		WriteFile(command, 9, printStream);
 	} else {
 		SetColorAttribute(color);
 		ClearScreen();

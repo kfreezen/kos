@@ -246,7 +246,7 @@ void irq_handler(Registers regs) {
 }
 
 void isr_handler(Registers regs) {
-	DisablePrintingToStdout();
+	// DisablePrintingToStdout(); // No clue what this was for.
 	
 	if(int_handlers[regs.int_no] != 0) {
 		IntHandler handler = int_handlers[regs.int_no];
@@ -256,7 +256,7 @@ void isr_handler(Registers regs) {
 		for(;;) {}
 	}
 	
-	EnablePrintingToStdout();
+	// EnablePrintingToStdout(); // No clue what this was for.
 }
 
 void syscall_handler(Registers regs) {

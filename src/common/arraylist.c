@@ -105,7 +105,7 @@ void ALItrReset(ALIterator* itr) {
 }
 
 Bool ALItrHasNext(ALIterator* itr) {
-	void** listData = (void**) itr->list->listData;
+	//void** listData = (void**) itr->list->listData;
 	int i = itr->idx;
 	
 	if(itr->nextIdx==-1) {

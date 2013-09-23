@@ -1022,16 +1022,16 @@ static void vmemwr(unsigned dst_off, unsigned char *src, unsigned count)
 }
 /*****************************************************************************
 *****************************************************************************/
-static void vpokeb(unsigned off, unsigned val)
+/*static void vpokeb(unsigned off, unsigned val)
 {
 	pokeb(get_fb_loc()+off, val);
-}
+}*/
 /*****************************************************************************
 *****************************************************************************/
-static unsigned vpeekb(unsigned off)
+/*static unsigned vpeekb(unsigned off)
 {
 	return peekb(get_fb_loc()+off);
-}
+}*/
 /*****************************************************************************
 write font to plane P4 (assuming planes are named P1, P2, P4, P8)
 *****************************************************************************/
@@ -1176,12 +1176,12 @@ DEMO GRAPHICS MODES
 
 void changeTo320x200_Graphics() {
 	write_regs(g_320x200x256);
-	memset(0xA0000, 0, 320*200);
+	memset((Pointer)0xA0000, 0, 320*200);
 }
 
 /*****************************************************************************
 *****************************************************************************/
-static unsigned char reverse_bits(unsigned char arg)
+/*static unsigned char reverse_bits(unsigned char arg)
 {
 	unsigned char ret_val = 0;
 
@@ -1202,85 +1202,4 @@ static unsigned char reverse_bits(unsigned char arg)
 	if(arg & 0x80)
 		ret_val |= 0x01;
 	return ret_val;
-}
-/*****************************************************************************
-512-CHARACTER FONT
-*****************************************************************************/
-static void font512(void)
-{
-/* Turbo C++ 1.0 seems to 'lose' any data declared 'static const' */
-	/*static*/ const char msg1[] = "!txet sdrawkcaB";
-	/*static*/ const char msg2[] = "?rorrim a toG";
-/**/
-	unsigned char seq2, seq4, gc4, gc5, gc6;
-	unsigned font_height, i, j;
-
-/* start in 80x25 text mode */
-	set_text_mode(0);
-/* code pasted in from write_font():
-save registers
-set_plane() modifies GC 4 and SEQ 2, so save them as well */
-	outb(VGA_SEQ_INDEX, 2);
-	seq2 = inb(VGA_SEQ_DATA);
-
-	outb(VGA_SEQ_INDEX, 4);
-	seq4 = inb(VGA_SEQ_DATA);
-/* turn off even-odd addressing (set flat addressing)
-assume: chain-4 addressing already off */
-	outb(VGA_SEQ_DATA, seq4 | 0x04);
-
-	outb(VGA_GC_INDEX, 4);
-	gc4 = inb(VGA_GC_DATA);
-
-	outb(VGA_GC_INDEX, 5);
-	gc5 = inb(VGA_GC_DATA);
-/* turn off even-odd addressing */
-	outb(VGA_GC_DATA, gc5 & ~0x10);
-
-	outb(VGA_GC_INDEX, 6);
-	gc6 = inb(VGA_GC_DATA);
-/* turn off even-odd addressing */
-	outb(VGA_GC_DATA, gc6 & ~0x02);
-/* write font to plane P4 */
-	set_plane(2);
-/* this is different from write_font():
-use font 1 instead of font 0, and use it for BACKWARD text */
-	font_height = 16;
-	for(i = 0; i < 256; i++)
-	{
-		for(j = 0; j < font_height; j++)
-		{
-			vpokeb(16384u * 1 + 32 * i + j,
-				reverse_bits(
-					g_8x16_font[font_height * i + j]));
-		}
-	}
-/* restore registers */
-	outb(VGA_SEQ_INDEX, 2);
-	outb(VGA_SEQ_DATA, seq2);
-	outb(VGA_SEQ_INDEX, 4);
-	outb(VGA_SEQ_DATA, seq4);
-	outb(VGA_GC_INDEX, 4);
-	outb(VGA_GC_DATA, gc4);
-	outb(VGA_GC_INDEX, 5);
-	outb(VGA_GC_DATA, gc5);
-	outb(VGA_GC_INDEX, 6);
-	outb(VGA_GC_DATA, gc6);
-/* now: sacrifice attribute bit b3 (foreground intense color)
-use it to select characters 256-511 in the second font */
-	outb(VGA_SEQ_INDEX, 3);
-	outb(VGA_SEQ_DATA, 4);
-/* xxx - maybe re-program 16-color palette here
-so attribute bit b3 is no longer used for 'intense' */
-	for(i = 0; i < sizeof(msg1); i++)
-	{
-		vpokeb((80 * 8  + 40 + i) * 2 + 0, msg1[i]);
-/* set attribute bit b3 for backward font */
-		vpokeb((80 * 8  + 40 + i) * 2 + 1, 0x0F);
-	}
-	for(i = 0; i < sizeof(msg2); i++)
-	{
-		vpokeb((80 * 16 + 40 + i) * 2 + 0, msg2[i]);
-		vpokeb((80 * 16 + 40 + i) * 2 + 1, 0x0F);
-	}
-}
+}*/

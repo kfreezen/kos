@@ -54,4 +54,5 @@ void outl(UInt16 port, UInt32 value);
 UInt8 inb(UInt16 port);
 UInt16 inw(UInt16 port);
 UInt32 inl(UInt16 port);
+
 #endif

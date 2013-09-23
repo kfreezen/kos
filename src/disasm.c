@@ -218,7 +218,7 @@ void Disassemble(UInt32 addr, int instructions) {
 	
 	char** usedregs = eregisters;
 	
-	char* instStr;
+	//char* instStr;
 	for(i=0; i<instructions;) {
 		kprintf("%x: ", ptr);
 		
@@ -235,7 +235,8 @@ void Disassemble(UInt32 addr, int instructions) {
 		}
 	
 		if( ((*ptr)&0xF8) == OP_MOVE_REG_IMM32) {
-			kprintf("%s %s, %x\n", STR_MOVE_REG_IMM32, usedregs[*ptr&0x7], uint_peek(++ptr));
+			kprintf("%s %s, %x\n", STR_MOVE_REG_IMM32, usedregs[(*ptr)&0x7], uint_peek(ptr+1));
+			ptr++;
 			
 			ptr+=4;
 			i++;
@@ -244,8 +245,8 @@ void Disassemble(UInt32 addr, int instructions) {
 			ptr++;
 			i++;
 		} else if(*ptr==OP_JMP_SHORT) {
-			UInt8 rel = *(++ptr);
-			ptr++;
+			UInt8 rel = *(ptr+1);
+			ptr+=2;
 			
 			unsigned addr = (UInt32) ptr;
 			
@@ -311,7 +312,7 @@ void Disassemble(UInt32 addr, int instructions) {
 			
 			kprintf("%s eax, [%x]\n", STR_MOVE_REG_MEM, addr);
 		} else if(*ptr==OP_TEST_RR) {
-			Byte attr = *(++ptr);
+			//Byte attr = *(++ptr);
 			
 			kprintf("%s ", STR_TEST);
 			PrintEffectiveAddress(&ptr, usedregs, 0);
@@ -372,7 +373,7 @@ void Disassemble(UInt32 addr, int instructions) {
 			ptr++;
 			i++;
 		} else if(*ptr == OP_XOR_REG32_REG32) {
-			Byte attr = *(++ptr);
+			//Byte attr = *(++ptr);
 			
 			PrintEffectiveAddress(&ptr, usedregs, 0);
 			
@@ -380,8 +381,8 @@ void Disassemble(UInt32 addr, int instructions) {
 			
 			i++;
 		} else if(*ptr == OP_ADD_RM8_R8) {
-			Byte attr = *(++ptr);
-			Byte regs = attr&0x3f;
+			//Byte attr = *(++ptr);
+			//Byte regs = attr&0x3f;
 			
 			kprintf("%s ", STR_ADD);
 			PrintEffectiveAddress(&ptr, usedregs, REGS_8BIT);
@@ -415,9 +416,9 @@ void DisassembleExtendedInst0(Byte** _ptr, char** usedregs) {
 	}
 	
 	else {
-		kprintf("%s:%x,%x\n", "<error>", *ptr, *(++ptr));
+		kprintf("%s:%x,%x\n", "<error>", *ptr, *(ptr+1));
 		
-		ptr++;
+		ptr+=2;
 	}
 	
 	*_ptr = ptr;

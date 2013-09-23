@@ -1,4 +1,5 @@
 #include <cli_ui.h>
+#include <print.h>
 
 #define HORIZ_BORDER_CHAR 205
 #define CORNER_TOPLEFT_CHAR 201
@@ -71,8 +72,8 @@ void SetTitle(const char* str) {
 
 void CreateBorder(Rectangle rect) {
 	DisableCliUI();
-	Bool drawTop, drawBottom, drawLeft, drawRight;
-	int lineTop, lineBottom;
+	Bool drawTop, /*drawBottom,*/ drawLeft /*, drawRight*/;
+	//int lineTop, lineBottom;
 	
 	if(rect.x == 0) {
 		drawLeft = false;
@@ -87,15 +88,15 @@ void CreateBorder(Rectangle rect) {
 	}
 	
 	if(rect.x+rect.width<screenWidth) {
-		drawRight = true;
+		//drawRight = true;
 	} else {
-		drawRight = false;
+		//drawRight = false;
 	}
 	
 	if(rect.y+rect.height<screenHeight) {
-		drawBottom = true;
+		//drawBottom = true;
 	} else {
-		drawRight = false;
+		//drawBottom = false;
 	}
 	
 	Terminal term;
@@ -103,9 +104,9 @@ void CreateBorder(Rectangle rect) {
 	
 	if(drawTop) {
 		int itr = ((rect.y-1)*rect.width)+rect.x;
-		int i = 0;
 		
-		for(i<0; i<rect.width; i++) {
+		int i;
+		for(i=0; i<rect.width; i++) {
 			if(CheckChars(vidmem[(itr+i)<<1])) {
 				// Change it how it needs to be.
 			} else {

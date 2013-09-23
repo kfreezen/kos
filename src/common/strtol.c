@@ -107,7 +107,7 @@ static unsigned long strtoxl(const char *nptr, char **endptr, int ibase, int fla
   --p;
 
   if (!(flags & FL_READDIGIT)) {
-    if (endptr) p = nptr;
+    if (endptr) p = (const unsigned char*) nptr;
     number = 0;
   } else if ((flags & FL_OVERFLOW) || (!(flags & FL_UNSIGNED) && (((flags & FL_NEG) && (number < LONG_MIN)) || (!(flags & FL_NEG) && (number > LONG_MAX))))) {
 #ifndef KERNEL
@@ -130,6 +130,6 @@ static unsigned long strtoxl(const char *nptr, char **endptr, int ibase, int fla
   return number;
 }
 
-long strtoul(const char *nptr, char **endptr, int ibase) {
+unsigned long strtoul(const char *nptr, char **endptr, int ibase) {
   return (long) strtoxl(nptr, endptr, ibase, FL_UNSIGNED);
 }
