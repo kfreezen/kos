@@ -2,7 +2,18 @@
 #include <kheap.h>
 #include <print.h>
 
-void Bitset_Copy(Bitset* dest, Bitset* src) {
+Bitset* Bitset_Copy(Bitset* source) {
+	if(source==NULL ) {
+		return NULL;
+	}
+
+	Bitset* b = Bitset_Create(source->length);
+	memcpy(b->bitData, source->bitData, source->length);
+
+	return b;
+}
+
+void Bitset_Copy_Old(Bitset* dest, Bitset* src) {
 	if(dest==NULL || src==NULL) {
 		return;
 	}
@@ -13,11 +24,16 @@ void Bitset_Copy(Bitset* dest, Bitset* src) {
 
 Bitset* Bitset_Create(UInt32 length) {
 	Bitset* set = kalloc(sizeof(Bitset));
+
 	if(set==NULL) {
 		return NULL;
 	}
 	
+	memset(set, 0, sizeof(Bitset));
+
 	set->bitData = kalloc(length*sizeof(UInt32));
+	memset(set->bitData, 0, length*sizeof(UInt32));
+
 	set->length = length;
 	return set;
 }
@@ -67,6 +83,8 @@ void Bitset_Resize(Bitset* bits, int size) {
 	}
 	
 	UInt32* bitsData = kalloc(size/32*sizeof(UInt32));
+	memset(bitsData, 0, size/32*sizeof(UInt32));
+	
 	memcpy(bitsData, bits->bitData, size/32*sizeof(UInt32));
 	
 	bits->length = size/32;
@@ -102,4 +120,8 @@ int Bitset_Set(Bitset* bits, UInt32 idx, int value) {
 	}
 	
 	return 0;
+}
+
+void Bitset_Clear(Bitset* bits) {
+	memset(bits->bitData, 0, sizeof(UInt32)*bits->length);
 }

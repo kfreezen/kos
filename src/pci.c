@@ -3,7 +3,7 @@
 #include <kheap.h>
 #include <print.h>
 
-#define PCI_DEBUG
+//#define PCI_DEBUG
 
 ArrayList TYPE(PCIDevice*)* pciDevices = NULL;
 

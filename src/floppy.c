@@ -8,7 +8,19 @@
 #include <fat12.h>
 #include <error.h>
 
-#define FLOPPY_DEBUG
+//#define FLOPPY_DEBUG
+
+#define FLOPPY_CACHE_SIZE 128
+#define KEEPALIVE_INCREMENT 4
+
+typedef struct {
+	Bool used;
+	int sectorNum;
+	int keepAlive;
+	UInt8 sector[512];
+} FloppyCacheEntry;
+
+FloppyCacheEntry* floppyCache = NULL;
 
 int flpy_error = 0;
 Bool floppy_done = false;
@@ -22,6 +34,49 @@ int floppy_ticks_motor_disable = 0;
 void ResetFloppy();
 void FDC_Specify(UInt32 steprate, UInt32 load, UInt32 unload, Bool dma);
 int FDC_Calibrate(UInt32);
+
+// This function also increments the keepalive variable.
+FloppyCacheEntry* Floppy_FindCacheEntry(int lba) {
+	if(floppyCache == NULL) {
+		return NULL;
+	}
+
+	FloppyCacheEntry* ret = NULL;
+
+	int i;
+	for(i=0; i<FLOPPY_CACHE_SIZE; i++) {
+		if(floppyCache[i].used) {
+			if(floppyCache[i].sectorNum == lba) {
+				floppyCache[i].keepAlive += KEEPALIVE_INCREMENT;
+				ret = &floppyCache[i];
+			} else {
+				if(floppyCache[i].keepAlive) {
+					floppyCache[i].keepAlive --;
+				}
+			}
+		}
+	}
+
+	return ret;
+}
+
+int Floppy_AddCacheEntry(int lba, UInt8* sector) {
+	if(floppyCache == NULL) {
+		return -1;
+	}
+
+	int i;
+	for(i=0; i<FLOPPY_CACHE_SIZE; i++) {
+		if(!floppyCache[i].used || !floppyCache[i].keepAlive) {
+			floppyCache[i].used = TRUE;
+			floppyCache[i].keepAlive = KEEPALIVE_INCREMENT;
+			memcpy(floppyCache[i].sector, sector, 512);
+			return 0;
+		}
+	}
+
+	return -1;
+}
 
 void FDC_Disable() {
 	outb(DIGITAL_OUTPUT_REGISTER, 0);
@@ -140,6 +195,11 @@ void FloppyLBAToCHS(int lba, int *head, int *track, int *sector) {
 }
 
 int FloppyInit() {
+	if(floppyCache == NULL) {
+		floppyCache = kalloc(sizeof(FloppyCacheEntry)*FLOPPY_CACHE_SIZE);
+		memset(floppyCache, 0, sizeof(FloppyCacheEntry)*FLOPPY_CACHE_SIZE);
+	}
+
 	flpy_error = 0;
 	
 	registerIntHandler(IRQ6, &floppy_irq_handler);
@@ -393,23 +453,32 @@ int FloppyReadSectorNoAlloc(int lba, void* buffer) {
 		return -1;
 	}
 	
-	int head=0, track=0, sector=1;
-	FloppyLBAToCHS(lba, &head, &track, &sector);
-	
-	FDC_ControlMotor(currentDrive, TRUE);
-	if(FDC_Seek(track, head)!=0) {
+	// First thing we want to do is look in the cache to see if our lba is in there.
+	FloppyCacheEntry* cacheEntry = Floppy_FindCacheEntry(lba);
+
+	if(!cacheEntry) {
+		int head=0, track=0, sector=1;
+		FloppyLBAToCHS(lba, &head, &track, &sector);
+		
+		FDC_ControlMotor(currentDrive, TRUE);
+		if(FDC_Seek(track, head)!=0) {
+			FDC_ControlMotor(currentDrive, FALSE);
+			return -1;
+		}
+
+		FDC_ReadSectorInternal(head, track, sector);
+		#ifdef FLOPPY_DEBUG
+		kprintf("fdc.hts=%x,%x,%x\n", head, track, sector);
+		#endif
+		
 		FDC_ControlMotor(currentDrive, FALSE);
-		return -1;
 	}
 
-	FDC_ReadSectorInternal(head, track, sector);
-	#ifdef FLOPPY_DEBUG
-	kprintf("fdc.hts=%x,%x,%x\n", head, track, sector);
-	#endif
-	
-	FDC_ControlMotor(currentDrive, FALSE);
-	
 	memcpy(buffer, DMA_BUFFER, FloppyGetDevice()->sectorSize);
+	if(!cacheEntry) {
+		Floppy_AddCacheEntry(lba, buffer);
+	}
+
 	#ifdef FLOPPY_DEBUG
 	kprintf("flp.memcpy(%x, %x) %x\n", buffer, FloppyGetDevice()->sectorSize, lba);
 	#endif

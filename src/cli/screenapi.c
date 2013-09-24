@@ -129,11 +129,22 @@ int CLI_Init() { // TODO:  Figure out a way in which to find the width and heigh
 		{SCREEN_WRITE_ESCAPE, MOVE, x&0xFF, x>>8, y&0xFF, y>>8}
 
 */
-int ScreenWrite(const char* userBuf, int len, VFS_Node* node) {
+
+int ScreenWrite(const void* _userBuf, int len, VFS_Node* node) {
+	const char* userBuf = (const char*) _userBuf;
+	
 	// This one is refreshingly simple, we just loop through the userBuf
+	int start = 0;
+	Bool doEscapes = FALSE;
+
+	if(userBuf[0] == VERIFY_BYTE_0 && userBuf[1] == VERIFY_BYTE_1) {
+		start = 2;
+		doEscapes = TRUE;
+	}
+
 	int i;
-	for(i=0; i<len; i++) {
-		if(userBuf[i] == SCREEN_WRITE_ESCAPE) {
+	for(i=start; i<len; i++) {
+		if(userBuf[i] == SCREEN_WRITE_ESCAPE && doEscapes) {
 			switch(userBuf[++i]) {
 				case SCREEN_WRITE_ESCAPE: {
 					PrintChar(SCREEN_WRITE_ESCAPE);

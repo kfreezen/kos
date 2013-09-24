@@ -1,6 +1,7 @@
 #include <vfs.h>
 #include <common.h>
 #include <print.h>
+#include <err.h>
 
 //#define VFS_DEBUG
 
@@ -114,7 +115,8 @@ void VFS_Init() {
 int CreateMountPoint(VFS_Node* node, void* data,
 		addfile_func addfile, dirload_func dirload,
 		getnode_func getnode, listfiles_func listfiles,
-		write_func write, read_func read
+		write_func write, read_func read,
+		seek_func seek, tell_func tell
 		) {
 	#ifdef VFS_DEBUG
 	kprintf("CreateMountPoint(%x, %x, %x, %x, %x, %x, %x, %x);", node, data, addfile, dirload,
@@ -136,6 +138,8 @@ int CreateMountPoint(VFS_Node* node, void* data,
 		node->listfiles = listfiles;
 		node->write = write;
 		node->read = read;
+		node->seek = seek;
+		node->tell = tell;
 
 		node->fileType |= MOUNTPOINT;
 		return 0;
@@ -228,7 +232,7 @@ VFS_Node* GetNodeFromPath(const char* path) {
 	return node;
 }
 
-int ReadFile(char* buf, int len, VFS_Node* node) {
+int ReadFile(void* buf, int len, VFS_Node* node) {
 	#ifdef VFS_DEBUG
 	kprintf("node=%x, node->read=%x\n", node, node->read);
 	#endif
@@ -244,7 +248,7 @@ int ReadFile(char* buf, int len, VFS_Node* node) {
 	return -1;
 }
 
-int WriteFile(const char* buf, int len, VFS_Node* node) {
+int WriteFile(const void* buf, int len, VFS_Node* node) {
 	if(node && node->write) {
 		return node->write(buf, len, node);
 	}
@@ -257,5 +261,23 @@ int LoadDirectory(VFS_Node* dir) {
 		return dir->dirload(dir);
 	}
 
+	return -1;
+}
+
+int FileSeek(int newPos, VFS_Node* node) {
+	if(node && node->seek) {
+		return node->seek(newPos, node);
+	}
+
+	SetErr(ERR_NULL_VALUE_ENCOUNTERED);
+	return -1;
+}
+
+int FileTell(VFS_Node* node) {
+	if(node && node->tell) {
+		return node->tell(node);
+	}
+
+	SetErr(ERR_NULL_VALUE_ENCOUNTERED);
 	return -1;
 }

@@ -1,8 +1,9 @@
 #include <elf.h>
 #include <kheap.h>
 #include <paging.h>
+#include <tasking.h>
 
-#define ELF_DEBUG
+//#define ELF_DEBUG
 
 extern PageDirectory* currentPageDir;
 
@@ -75,6 +76,11 @@ ELF* Parse_ELF(Pointer executable) {
 		kprintf("p_headers[%d].p_flags = %x.  hdr->e_phnum=%d\n", i, p_headers[i].p_flags, hdr->e_phnum);
 		#endif
 		
+		if(p_headers[i].p_vaddr == NULL) {
+			// TODO:  Figure out what to do with this.  The one that is null (at least in my helloworld) is GNU_STACK
+			continue;
+		}
+
 		int pagesNum;
 		void* ptr = (void*) ((UInt32)p_headers[i].p_vaddr&~0xFFF);
 		int memsz = p_headers[i].p_memsz;
@@ -85,12 +91,14 @@ ELF* Parse_ELF(Pointer executable) {
 		pagesNum = memsz>>12;
 	
 		int j;
-		for(j=0; j<pagesNum; j++) {
-			MapAllocatedPageTo(dir, ptr, USER_TEXT_FLAGS);
+		for(j=0; j<=pagesNum; j++) {
+			if(!IsMapped(dir, ptr)) {
+				MapAllocatedPageTo(dir, ptr, USER_TEXT_FLAGS);
+			}
+
 			ptr+=0x1000;
 		}
 		
-		// This is paging faulting on 0x8048334
 		memcpy(p_headers[i].p_vaddr, executable+p_headers[i].p_offset, p_headers[i].p_filesz);
 		/*
 		if(p_headers[i].p_flags&PF_W) {
@@ -120,4 +128,8 @@ char* elfErrors[] = {"NO_ERROR", "UNSUPPORTED_FEATURE", "UNSUPPORTED_CPU_ARCH", 
 
 char** GetElfErrors() {
 	return elfErrors;
+}
+
+int CreateTaskFromELF(ELF* elf) {
+	return CreateTask((UInt32) elf->start, elf->dir);
 }

@@ -3,7 +3,7 @@
 #include <kheap.h>
 #include <print.h>
 
-#define TASKING_DEBUG
+//#define TASKING_DEBUG
 
 volatile Task* current_task;
 volatile Task* ready_queue;
@@ -115,13 +115,17 @@ int CreateTask(UInt32 start, PageDirectory* dir) {
 	
 	// Here we need to set up the stack.
 	CreateStack(dir, (void*)0xE0000000, 0x2000);
-	
+
 	PageDirectory* saved = currentPageDir;
 	SwitchPageDirectory(dir);
 	// Set up the stack for return from an interrupt.
 	//TaskStackSetup(0xE0000000-(sizeof(void*)<<1), start);
 	SwitchPageDirectory(saved);
 	
+	#ifdef TASKING_DEBUG
+	kprintf("CreateTask.waypoint2:eip=%x\n", newTask->eip);
+	#endif
+
 	//newTask->esp = 0xE0000000-8;
 	newTask->esp = 0xE0000000-sizeof(void*);
 	newTask->eip = (UInt32) start;

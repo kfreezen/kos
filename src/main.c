@@ -108,15 +108,25 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	kprintf("[ok]\n");
 
 	FAT12_Init(FAT12_GetContext(FloppyGetDevice()), "/", "floppy");
-	VFS_Node* floppy = GetNodeFromPath("/floppy");
-	kprintf("floppy=%x\n", floppy);
-	LoadDirectory(floppy);
 	
+	InitTasking();
+
 	kprintf("Kernel init done...\n");
 
-	Cls();
-	kprintf("kOS v0.6.10\n");
-	
+	//Cls();
+
+	kprintf("kOS v0.6.12\n");
+
+	VFS_Node* elf = GetNodeFromPath("/floppy/helloworld");
+	// Find out the length of the file.
+
+	FileSeek(SEEK_EOF, elf);
+	int length = FileTell(elf);
+	FileSeek(0, elf);
+	UInt8* elfBuf = kalloc(length);
+	ReadFile(elfBuf, length, elf);
+	ELF* elfExe = Parse_ELF(elfBuf);
+	CreateTaskFromELF(elfExe);
 	return 0;
 }
 

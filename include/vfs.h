@@ -50,6 +50,14 @@ fileType:
 	FILE_DIRECTORY
 **/
 
+#include <err.h>
+
+#define ERR_EOF_ENCOUNTERED ERR_DEFINED_ELSEWHERE_BOTTOM+0
+#define ERR_NOT_EXISTS ERR_DEFINED_ELSEWHERE_BOTTOM+1
+#define ERR_FILE_EXPECTED ERR_DEFINED_ELSEWHERE_BOTTOM+2
+#define ERR_DIR_EXPECTED ERR_DEFINED_ELSEWHERE_BOTTOM+3
+#define ERR_VFS_DRV_DEFINED_BOTTOM (ERR_DEFINED_ELSEWHERE_BOTTOM+20)
+
 #define FILE_FILE 1
 #define FILE_DEVICE 2
 #define FILE_DIRECTORY 3
@@ -67,6 +75,8 @@ typedef struct VFS_Options {
 	int timeout; // In ms
 } VFS_Options;
 
+typedef int filePosType;
+
 // This is ugly code, but I guess that's what you get
 // for referencing a struct from within itself.
 typedef struct VFS_Node {
@@ -82,8 +92,10 @@ typedef struct VFS_Node {
 	int (*dirload)(struct VFS_Node*);
 	ArrayList* TYPE(VFS_Node*) (*listfiles)(struct VFS_Node*);
 	struct VFS_Node* (*getnode)(struct VFS_Node*, const char*);
-	int (*write)(const char* buf, int len, struct VFS_Node* node);
-	int (*read)(char* buf, int len, struct VFS_Node* node);
+	int (*write)(const void* buf, int len, struct VFS_Node* node);
+	int (*read)(void* buf, int len, struct VFS_Node* node);
+	int (*seek)(int newPos, struct VFS_Node* node);
+	int (*tell)(struct VFS_Node* node);
 } VFS_Node;
 
 typedef struct {
@@ -99,8 +111,10 @@ typedef VFS_Node* (*getnode_func)(VFS_Node* node, const char* name);
 // Should return an arraylist of child nodes.
 typedef ArrayList* TYPE(VFS_Node*) (*listfiles_func)(VFS_Node* dir);
 
-typedef int (*write_func)(const char* buf, int len, VFS_Node* node);
-typedef int (*read_func)(char* buf, int len, VFS_Node* node);
+typedef int (*write_func)(const void* buf, int len, VFS_Node* node);
+typedef int (*read_func)(void* buf, int len, VFS_Node* node);
+typedef filePosType (*seek_func)(filePosType newPos, struct VFS_Node* node);
+typedef filePosType (*tell_func)(VFS_Node* node);
 
 void VFS_Init();
 VFS_Node* VFS_GetRoot();
@@ -109,16 +123,20 @@ VFS_Node* AddFile(int fileType, const char* name, VFS_Node* parent);
 int CreateMountPoint(VFS_Node* node, void* data,
 		addfile_func addfile, dirload_func dirload,
 		getnode_func getnode, listfiles_func listfiles,
-		write_func write, read_func read
+		write_func write, read_func read,
+		seek_func seek, tell_func tell
 		);
 
 int LoadDirectory(VFS_Node* dir);
 ArrayList* ListFiles(VFS_Node* dir);
 VFS_Node* GetNode(VFS_Node* node, const char* name);
 
-int ReadFile(char* buf, int len, VFS_Node* node);
-int WriteFile(const char* buf, int len, VFS_Node* node);
+int ReadFile(void* buf, int len, VFS_Node* node);
+int WriteFile(const void* buf, int len, VFS_Node* node);
+int FileSeek(int newPos, VFS_Node* node);
+int FileTell(VFS_Node* node);
 
 VFS_Node* GetNodeFromPath(const char* path);
 
+#define SEEK_EOF 0x7FFFFFFF
 #endif

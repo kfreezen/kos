@@ -19,6 +19,9 @@
 #define CMD_CLEARSCREEN 0x00
 #define CMD_MOVE 0x01
 
+#define VERIFY_BYTE_0 0xAA
+#define VERIFY_BYTE_1 0x55
+
 int CLI_Init();
 void CLI_SetTextMode();
 

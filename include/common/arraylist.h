@@ -24,6 +24,8 @@ ArrayList* ALCreate();
 void* ALGetPtr(ArrayList* list, int idx);
 UInt32 ALGetInt(ArrayList* list, int idx);
 
+ArrayList* ALCopy(ArrayList* list);
+
 int ALAdd(ArrayList* list, void* value);
 
 void expand(ArrayList* list);
@@ -35,6 +37,7 @@ Bool ALItrHasNext(ALIterator* itr);
 void* ALItrNext(ALIterator* itr);
 void ALFreeItr(ALIterator* itr);
 void ALFreeList(ArrayList* list);
+void ALClear(ArrayList* list);
 
 #define ALFreeIterator(a) ALFreeItr(a)
 #endif

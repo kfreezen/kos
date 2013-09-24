@@ -62,6 +62,7 @@ typedef struct {
 } ELF;
 
 ELF* Parse_ELF(Pointer executable); // error is nonzero if the executable type is not supported.  It can have different values as it tells us what went wrong also.
+int CreateTaskFromELF(ELF* elf);
 
 // Various defines to make our life easier
 #define EI_MAG0 0

@@ -40,6 +40,8 @@ void UnmapPageFrom(PageDirectory* dir, void* addr);
 void FreePage(UInt32 page);
 void FreeAllUserPages(PageDirectory* dir);
 
+Bool IsMapped(PageDirectory* dir, void* virtualAddr);
+
 #define PAGE_DIR_SIZE (sizeof(PageDirectoryEntry)*1024)
 #define PAGE_TABLE_SIZE (sizeof(PageTableEntry)*1024)
 

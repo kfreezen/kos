@@ -208,7 +208,7 @@ void kprintf(const char* fmt, ...) {
 
 void ClsEx(UInt8 color) {
 	if(printStream) {
-		char command[9] = {SCREEN_WRITE_ESCAPE,
+		char command[11] = {VERIFY_BYTE_0, VERIFY_BYTE_1, SCREEN_WRITE_ESCAPE,
 			CMD_CLEARSCREEN, color,
 			SCREEN_WRITE_ESCAPE, CMD_MOVE, 0, 0, 0, 0
 		};

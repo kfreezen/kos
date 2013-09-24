@@ -349,7 +349,7 @@ int MapAllocatedPageBlockTo(PageDirectory* dir, void* virtualAddr, int flags) {
 		}
 		
 		if(table->t[pt_index+i]&PAGE_PRESENT) {
-			kprintf("ERROR:  Page %d in page block is already mapped.\n", i);
+			kprintf("ERROR:  Page %d at the virtual address is already mapped.\n", i);
 			return -1;
 		}
 	}
@@ -409,6 +409,30 @@ void* getPhysAddr(PageDirectory* dir, void* virt) {
 	return (void*)((unsigned)table->t[ptindex] & 0xFFFFF000);
 }
 
+Bool IsMapped(PageDirectory* dir, void* virtualAddr) {
+	if(dir==NULL) {
+		dir = currentPageDir;
+	}
+
+	if((unsigned)virtualAddr&0xfff) {
+		virtualAddr = (void*) ((unsigned)virtualAddr & 0xFFFFF000);
+	}
+
+	int pd_index = ((unsigned)virtualAddr)>>22;
+	int pt_index = ((unsigned)virtualAddr)>>12 & 0x03FF;
+	
+	if(!(dir->d[pd_index] & PAGE_PRESENT)) {
+		return FALSE;
+	}
+	
+	PageTable* table = (PageTable*) (dir->kd[pd_index]&0xFFFFF000);
+	if(table->t[pt_index]&PAGE_PRESENT) {
+		return TRUE;
+	} else {
+		return FALSE;
+	}
+}
+
 int MapAllocatedPageTo(PageDirectory* dir, void* virtualAddr, int flags) {
 	#ifdef PAGING_DEBUG
 	kprintf("MapAllocatedPageTo(%x, %x)\n", dir, virtualAddr);
@@ -436,7 +460,7 @@ int MapAllocatedPageTo(PageDirectory* dir, void* virtualAddr, int flags) {
 	PageTable* table = (PageTable*) (dir->kd[pd_index]&0xFFFFF000);
 	if(table->t[pt_index]&PAGE_PRESENT) {
 		// You should know better than to try mapping something to an already present page.
-		kprintf("ERROR:  Page is already mapped.\n");
+		kprintf("ERROR:  Page at virtual address %x is already mapped.\n", virtualAddr);
 		return -1;
 	} else {
 		UInt32 physAddr = AllocPage()<<12;

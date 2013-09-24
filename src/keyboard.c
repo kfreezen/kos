@@ -7,7 +7,7 @@
 #include <floppy.h>
 #include <dev.h>
 
-#define KEYBOARD_DEBUG
+//#define KEYBOARD_DEBUG
 
 int curmap=0;
 int nummaps=0;
@@ -48,11 +48,12 @@ int GetAvailableBytes() {
 	return tmp - kb_buf_tail;
 }
 
-int kb_read(char* userBuf, int len, VFS_Node* node) {
+int kb_read(void* _userBuf, int len, VFS_Node* node) {
 	#ifdef KEYBOARD_DEBUG
 	kprintf("kb_read(%x, %x, %x)\n", userBuf, len, node);
 	#endif
-
+	char* userBuf = (char*) _userBuf;
+	
 	int toRead;
 
 	if(node->options.flags&O_NONBLOCKING) {

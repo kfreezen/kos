@@ -14,6 +14,17 @@ ArrayList* ALCreate() {
 	return newList;
 }
 
+ArrayList* ALCopy(ArrayList* list) {
+	ArrayList* newList = kalloc(sizeof(ArrayList));
+	newList->length = list->length;
+	newList->capacity = list->capacity;
+	newList->allocatedListPtr = newList->listData = kalloc(list->capacity*sizeof(void*));
+	newList->bits = Bitset_Copy(list->bits);
+	memcpy(newList->listData, list->listData, list->length*sizeof(void*));
+
+	return newList;
+}
+
 int ALAdd(ArrayList* list, void* value) {
 	if(list==NULL) {
 		kprintf("ALAdd error:  list==NULL.  ALAdd(%x, %x)\n", list, value);
@@ -24,14 +35,20 @@ int ALAdd(ArrayList* list, void* value) {
 		expand(list);
 	}
 	
+	// OK We check this to see if there is an open spot in the list.
 	int idx = Bitset_FirstWithValue(list->bits, 0);
 	if(idx==-1) {
-		((void**)list->listData)[list->length++] = value;
+		expand(list);
+		// Try again
+		ALAdd(list, value);
+
+		//((void**)list->listData)[list->length++] = value;
 	} else {
 		((void**)list->listData)[idx] = value;
 	}
-	
+
 	if(idx>=list->length) {
+		//kprintf("list->length = %x.\n", list->length);
 		list->length = idx+1;
 	}
 	
@@ -61,6 +78,9 @@ void expand(ArrayList* list) {
 	kfree((void*) list->allocatedListPtr);
 	
 	list->allocatedListPtr = newListData;
+
+	// So it appears that the list->allocatedListPointer and list->listData will still be the same.
+	
 	Bitset_Resize(list->bits, list->capacity);
 }
 
@@ -77,6 +97,11 @@ void contract(ArrayList* list) {
 	list->allocatedListPtr = list->listData = newListData;
 	list->capacity = newCap;
 	Bitset_Resize(list->bits, list->capacity);
+}
+
+void ALClear(ArrayList* list) {
+	memset(list->listData, 0, sizeof(void*)*list->length);
+	Bitset_Clear(list->bits);
 }
 
 void* ALGetPtr(ArrayList* list, int idx) {

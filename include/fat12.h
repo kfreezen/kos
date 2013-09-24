@@ -11,6 +11,13 @@
 
 #define FAT12_EOF 0xFF8
 
+#define FAT12_ENTRY_NULL 0x00
+#define FAT12_ENTRY_EMPTY 0xE5
+#define FAT12_SECTOR_SIZE 512
+
+#include <err.h>
+#define ERR_REL_SECTOR_0 (ERR_VFS_DRV_DEFINED_BOTTOM + 0)
+
 struct __DirEntry {
 	char name[11];
 	Byte attribute;
@@ -45,6 +52,10 @@ typedef struct {
 	Device* linkedDevice;
 	Bpb* bpb;
 } FAT12_Context;
+
+typedef struct {
+	int filePos;
+} FAT12_FileData;
 
 typedef struct {
 	FAT12_Context* context;

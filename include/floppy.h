@@ -15,6 +15,7 @@ Device* FloppyGetDevice();
 
 #define NO_FLOPPY 1
 #define FLOPPY_SECTORS_PER_TRACK 18
+#define FLOPPY_SECTOR_SIZE 512
 
 enum FloppyRegisters {
    STATUS_REGISTER_A                = 0x3F0, // read-only
