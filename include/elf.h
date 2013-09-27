@@ -62,9 +62,25 @@ struct Elf32_Sym {
 	unsigned char st_info;
 	unsigned char st_other;
 	Elf32_Half st_shndx;
-};
+} __attribute__((packed));
 
 typedef struct Elf32_Sym Elf32_Sym;
+
+struct Elf32_Rel {
+	Elf32_Addr r_offset;
+	Elf32_Word r_info;
+} __attribute__((packed));
+
+typedef struct Elf32_Rel Elf32_Rel;
+
+struct Elf32_Rela {
+	Elf32_Addr r_offset;
+	Elf32_Word r_info;
+	Elf32_Sword r_addend;
+} __attribute__((packed));
+
+typedef struct Elf32_Rela Elf32_Rela;
+
 typedef struct {
 	int error;
 	Pointer start;

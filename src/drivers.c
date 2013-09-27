@@ -30,7 +30,7 @@ void* AllocateDriverSpace(int numPages) {
 
 	void* returnPtr = driverAllocPtr;
 
-	int pagesBlocksToAllocate = numPages >> 5; // 32 pages in a page block, >> 5 = / 32.
+	int pageBlocksToAllocate = numPages >> 5; // 32 pages in a page block, >> 5 = / 32.
 	int pagesToAllocate = numPages - pageBlocksToAllocate << 5; // basically numPages % 32.
 
 	int i;

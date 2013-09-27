@@ -226,7 +226,7 @@ ELF* LoadKernelDriver(Pointer file) {
 
 			case SHT_PROGBITS: {
 				// We need to put this into an allocated space
-				void* addr = GetDriverAllocatedSpace();
+				void* addr = AllocateDriverSpace(sections[i].sh_size / PAGE_SIZE);
 				// Copy the "progbits" over to the new addr.
 				void* fileAddr = (file + sections[i].sh_offset);
 				memcpy(addr, fileAddr, sections[i].sh_size);
@@ -245,7 +245,7 @@ ELF* LoadKernelDriver(Pointer file) {
 	while(ALItrHasNext(itr)) {
 		Elf32_Shdr* rel_hdr = (Elf32_Shdr*) ALItrNext(itr);
 		int rel_length = rel_hdr->sh_size / rel_hdr->sh_entsize;
-		Elf32_Rel* rel = (Elf32_Rel*) (file + rel_hdr->addr);
+		Elf32_Rel* rel = (Elf32_Rel*) ((UInt32)file + rel_hdr->sh_addr);
 		// Process the relocations
 		int i;
 		for(i=0; i<rel_length; i++) {
