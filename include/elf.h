@@ -55,6 +55,16 @@ struct Elf32_Phdr {
 
 typedef struct Elf32_Phdr Elf32_Phdr;
 
+struct Elf32_Sym {
+	Elf32_Word st_name;
+	Elf32_Addr st_value;
+	Elf32_Word st_size;
+	unsigned char st_info;
+	unsigned char st_other;
+	Elf32_Half st_shndx;
+};
+
+typedef struct Elf32_Sym Elf32_Sym;
 typedef struct {
 	int error;
 	Pointer start;
@@ -137,6 +147,20 @@ int CreateTaskFromELF(ELF* elf);
 #define SHF_EXECINSTR 0x4
 #define SHF_MASKPROC 0xf0000000
 
+#define STB_LOCAL 0
+#define STB_GLOBAL 1
+#define STB_WEAK 2
+#define STB_LOPROC 13
+#define STB_HIPROC 15
+
+#define STT_NOTYPE 0
+#define STT_OBJECT 1
+#define STT_FUNC 2
+#define STT_SECTION 3
+#define STT_FILE 4
+#define STT_LOPROC 13
+#define STT_HIPROC 15
+
 #define PF_W 0x1
 #define PF_R 0x2
 #define PF_X 0x4
@@ -150,6 +174,25 @@ int CreateTaskFromELF(ELF* elf);
 #define PT_PHDR 6
 #define PT_LOPROC 0x70000000
 #define PT_HIPROC 0x7fffffff
+
+// Determine symbol index and type of relocation with these two defines
+#define ELF32_R_SYM(i) ((i)>>8)
+#define ELF32_R_TYPE(i) ((unsigned char)(i))
+
+// Compile symbol index and type into one ELF-compliant format
+#define ELF32_R_INFO(s,t) (((s)<<8)+(unsigned char)(t))
+
+// Get symbol binding, which determines linkage
+// visibility and behaviour.
+#define ELF32_ST_BIND(i) ((i)>>4)
+
+// Get symbol type, which provides a general
+// classification for the associated entity.
+#define ELF32_ST_TYPE(i) ((i)&0xF)
+
+// Combine binding and type into one integer.
+#define ELF32_ST_INFO(b,t) (((b)<<4)+((t)&0xf))
+
 
 char** GetElfErrors();
 #endif

@@ -135,6 +135,17 @@ ELF* Parse_ELF(Pointer executable) {
 	return elf;
 }
 
+typedef struct {
+	void* addr; // The address at which the progbits are loaded in memory.
+	void* requestedAddr;
+	int length; // Length of the progbits section in bytes.
+	Elf32_Shdr* sectionHeader;
+	int sh_idx;
+	// Half of this stuff is to make our life easier so we don't have to recalculate stuff every single time
+	// we want to use it. sectionHeader isn't necessary, and neither is length, as sectionHeader can be derived
+	// from sh_idx, and length can derived from sectionHeader.
+} ProgBitsInfo;
+
 ELF* LoadKernelDriver(Pointer file) {
 	Elf32_Ehdr* hdr = (Elf32_Ehdr*) file;
 	ELF* elf = (ELF*) kalloc(sizeof(ELF));
@@ -188,6 +199,8 @@ ELF* LoadKernelDriver(Pointer file) {
 	// What this loop does is loads the relocation tables into their respective ArrayList
 	ArrayList* TYPE(Elf32_Shdr*) rela = ALCreate();
 	ArrayList* TYPE(Elf32_Shdr*) rel = ALCreate();
+	ArrayList* TYPE(ProgBitsInfo*) progBits = ALCreate();
+
 	Elf32_Shdr* symtab = NULL;
 
 	int i;
@@ -209,7 +222,22 @@ ELF* LoadKernelDriver(Pointer file) {
 
 			case SHT_SYMTAB: {
 				symtab = &sections[i];
-			}
+			} break;
+
+			case SHT_PROGBITS: {
+				// We need to put this into an allocated space
+				void* addr = GetDriverAllocatedSpace();
+				// Copy the "progbits" over to the new addr.
+				void* fileAddr = (file + sections[i].sh_offset);
+				memcpy(addr, fileAddr, sections[i].sh_size);
+				ProgBitsInfo* info = kalloc(sizeof(ProgBitsInfo));
+				info->addr = addr;
+				info->requestedAddr = sections[i].sh_addr;
+				info->length = sections[i].sh_size;
+				info->sectionHeader = &sections[i];
+				info->sh_idx = i;
+				ALAdd(progBits, info);
+			} break;
 		}
 	}
 
@@ -217,8 +245,19 @@ ELF* LoadKernelDriver(Pointer file) {
 	while(ALItrHasNext(itr)) {
 		Elf32_Shdr* rel_hdr = (Elf32_Shdr*) ALItrNext(itr);
 		int rel_length = rel_hdr->sh_size / rel_hdr->sh_entsize;
-
+		Elf32_Rel* rel = (Elf32_Rel*) (file + rel_hdr->addr);
 		// Process the relocations
+		int i;
+		for(i=0; i<rel_length; i++) {
+			// Ok, we want to compute the address within the file to apply the relocation.
+			// Get the pointer to our symbol table.
+			// Now get the symbol table
+			// Get the symbol index from the relocation.
+			
+			// Determine whether the symbol is relocatable.  if it isn't SHN_ABS, SHN_COMMON, or SHN_UNDEF,
+			// we should relocate.
+		}
+
 		// TODO: FINISH
 	}
 }
