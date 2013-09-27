@@ -193,6 +193,82 @@ int CreateTaskFromELF(ELF* elf);
 // Combine binding and type into one integer.
 #define ELF32_ST_INFO(b,t) (((b)<<4)+((t)&0xf))
 
+// Definitions for relocation calculation
+
+// A = addend used to compute the value of
+// the relocatable field.
+
+// B = base address at which a shared object has
+// been loaded into memory during execution.
+// Generally 0
+
+// G = Offset into the global offset table at which
+// the address of the relocation entry's symbol will
+// reside during execution.
+
+// GOT = Address of the global offset table
+
+// L = Section offset or address of the procedure
+// linkage table entry for a symbol.  A procedure
+// linkage table entry redirects a function call
+// to the proper destination.  The link editor
+// builds the initial procedure linkage table,
+// and the dynamic linker modifies the entries
+// during execution.
+
+// P = Section offset or address of the storage unit
+// being relocated (computed using r_offset).
+
+// S = Value of the symbol whose index resides in the
+// relocation entry.
+
+#define R_386_NONE 0 // none; calculation: none
+#define R_386_32 1 // word32; calculation: S + A
+#define R_386_PC32 2 // word32; calculation: S + A - P
+#define R_386_GOT32 3 // word32; calculation: G + A - P
+#define R_386_PLT32 4 // word32; calculation: L + A - P
+#define R_386_COPY 5 // none; calculation: none
+#define R_386_GLOB_DAT 6 // word32; calculation: S
+#define R_386_JMP_SPLOT 7 // word32; calculation S
+#define R_386_RELATIVE 8 // word32; B + A
+#define R_386_GOTOFF 9 // word32; S + A - GOT
+#define R_386_GOTPC 10 // word32; GOT + A - P
+
+/**
+R_386_GOT32 This relocation type computes the distance from the base of the global offset
+	table to the symbol’s global offset table entry. It additionally instructs the link
+	editor to build a global offset table.
+	R_386_PLT32 This relocation type computes the address of the symbol’s procedure linkage
+	 table entry and additionally instructs the link editor to build a procedure linkage
+	table.
+R_386_COPY The link editor creates this relocation type for dynamic linking. Its offset
+	member refers to a location in a writable segment. The symbol table index
+	specifies a symbol that should exist both in the current object file and in a shared
+	object. During execution, the dynamic linker copies data associated with the
+	shared object’s symbol to the location specified by the offset.
+
+R_386_GLOB_DAT This relocation type is used to set a global offset table entry to the address of the
+	specified symbol. The special relocation type allows one to determine the
+	correspondence between symbols and global offset table entries.
+R_3862_JMP_SLOT The link editor creates this relocation type for dynamic linking. Its offset
+	member gives the location of a procedure linkage table entry. The dynamic
+	linker modifies the procedure linkage table entry to transfer control to the desig-
+	nated symbol’s address [see ‘‘Procedure Linkage Table’’ in Part 2].
+R_386_RELATIVE The link editor creates this relocation type for dynamic linking. Its offset
+	member gives a location within a shared object that contains a value represent-
+	ing a relative address. The dynamic linker computes the corresponding virtual
+	address by adding the virtual address at which the shared object was loaded to
+	the relative address. Relocation entries for this type must specify 0 for the sym-
+	bol table index.
+R_386_GOTOFF This relocation type computes the difference between a symbol’s value and the
+	address of the global offset table. It additionally instructs the link editor to build
+	the global offset table.
+R_386_GOTPC This relocation type resembles R_386_PC32, except it uses the address of the
+	global offset table in its calculation. The symbol referenced in this relocation
+	normally is _GLOBAL_OFFSET_TABLE_, which additionally instructs the link
+	editor to build the global offset table.
+
+**/
 
 char** GetElfErrors();
 #endif

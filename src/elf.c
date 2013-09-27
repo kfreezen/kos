@@ -249,13 +249,20 @@ ELF* LoadKernelDriver(Pointer file) {
 		// Process the relocations
 		int i;
 		for(i=0; i<rel_length; i++) {
-			// Ok, we want to compute the address within the file to apply the relocation.
-			// Get the pointer to our symbol table.
-			// Now get the symbol table
-			// Get the symbol index from the relocation.
+			/*
+			r_offset This member gives the location at which to apply the relocation action. For a relocatable
+				file, the value is the byte offset from the beginning of the section to the storage unit affected
+				by the relocation. For an executable file or a shared object, the value is the virtual address of
+				the storage unit affected by the relocation.
+			r_info This member gives both the symbol table index with respect to which the relocation must be
+				made, and the type of relocation to apply. For example, a call instruction’s relocation entry
+				would hold the symbol table index of the function being called. If the index is STN_UNDEF,
+				the undefined symbol index, the relocation uses 0 as the ‘‘symbol value.’’ Relocation types
+				are processor-specific. When the text refers to a relocation entry’s relocation type or symbol
+				table index, it means the result of applying ELF32_R_TYPE or ELF32_R_SYM, respectively,
+				to the entry’s r_info member.
+			*/
 			
-			// Determine whether the symbol is relocatable.  if it isn't SHN_ABS, SHN_COMMON, or SHN_UNDEF,
-			// we should relocate.
 		}
 
 		// TODO: FINISH
