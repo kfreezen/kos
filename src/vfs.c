@@ -53,6 +53,10 @@ VFS_Node* VFS_AddFile(int fileType, const char* name, VFS_Node* parent) {
 }
 
 VFS_Node* VFS_GetNode(VFS_Node* node, const char* name) {
+	#ifdef VFS_DEBUG
+	kprintf("VFS_GetNode(%x, %s)\n", node, name);
+	#endif
+
 	if(isdir(node)) {
 		DirectoryData* dir = (DirectoryData*) node->data;
 
@@ -194,6 +198,7 @@ VFS_Node* GetNodeFromPath(const char* path) {
 	strcpy(buf, path);
 
 	VFS_Node* node = vfsRoot;
+	VFS_Node* ret = node;
 
 	char* tok = strtok(buf, "/");
 
@@ -218,18 +223,22 @@ VFS_Node* GetNodeFromPath(const char* path) {
 				kprintf("ret=%s\n", newNode->name);
 				#endif
 
-				return newNode; // This may not be the last in the path, but
+				ret = newNode; // This may not be the last in the path, but
 				// this is a bottom-node file, so let's just return it.
+				break;
 			} else {
 				node = newNode; // Continue in our FS hierarchy
 			}
 		}
 
+		ret = node;
+
 		tok = strtok(NULL, "/");
 	}
 
+	kfree(buf);
 	// It's probably a directory.
-	return node;
+	return ret;
 }
 
 int ReadFile(void* buf, int len, VFS_Node* node) {

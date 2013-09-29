@@ -1,5 +1,5 @@
 #!/bin/sh
 
-CFLAGS="-m32 -I libc/include -nostdlib -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs"
+CFLAGS="-m32 -I libc/include -nostdlib -fno-builtin -fno-stack-protector -fno-exceptions -nostartfiles -nodefaultlibs -fno-asynchronous-unwind-tables"
 
-gcc $CFLAGS $@ -L libc -lc
+gcc $CFLAGS $@

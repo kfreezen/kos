@@ -4,9 +4,7 @@
 #include <print.h>
 #include <debugdef.h>
 
-//#define PAGING_DEBUG
-
-// FIXME:  There is a bug in this file that causes the heap to map to 0x00000000, when it should be mapped after the kernel.
+#define PAGING_DEBUG
 
 PageDirectory staticKPageDir __attribute__((aligned(0x1000)));
 
@@ -266,7 +264,9 @@ void InitPaging(int mem_kb) {
 	UInt32 used = (2<<(j&0x1F))-1;
 	pages->bitData[k] = used;
 	
-	// On real hardware there will be memory holes.  That is why we need a map of memory that is available to the CPU so we can mark the memory holes as used. TODO Obtain a memory map and use it to mark physical pages as used if there is a memory hole on those pages.
+	// On real hardware there will be memory holes.  That is why we need a map of memory that is available to the CPU
+	// so we can mark the memory holes as used. TODO Obtain a memory map and use it to mark physical pages as used if
+	// there is a memory hole on those pages.
 	
 	SwitchPageDirectory(kernelPageDir);
 }
@@ -458,13 +458,14 @@ int MapAllocatedPageTo(PageDirectory* dir, void* virtualAddr, int flags) {
 	}
 	
 	PageTable* table = (PageTable*) (dir->kd[pd_index]&0xFFFFF000);
+
 	if(table->t[pt_index]&PAGE_PRESENT) {
 		// You should know better than to try mapping something to an already present page.
 		kprintf("ERROR:  Page at virtual address %x is already mapped.\n", virtualAddr);
 		return -1;
 	} else {
 		UInt32 physAddr = AllocPage()<<12;
-		//kprintf("physAddr=%x\n", physAddr);
+		kprintf("physAddr=%x, %x\n", physAddr, table->t);
 		
 		table->t[pt_index] = AssemblePTE((void*)physAddr, flags);
 		_invlpg(virtualAddr);

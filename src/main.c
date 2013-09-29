@@ -28,6 +28,7 @@
 #include <error.h>
 #include <ata.h>
 #include <dev.h>
+#include <drivers.h>
 
 #define PIT_MSTIME 20
 
@@ -47,13 +48,6 @@ Byte iKernel[2048];
 Byte iKernelOut[2048];
 
 typedef void (*function)();
-
-typedef struct EXE_Header {
-	UInt32 magic;
-	UInt32 loc;
-	UInt32 loc_start;
-	UInt32 loc_data;
-} EXE_Header;
 
 void thread1();
 void thread2();
@@ -90,6 +84,8 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	VFS_Init();
 	DevFS_Init();
 	
+	DriversInit();
+
 	Screen_Init();
 
 	FloppyInit();
@@ -117,7 +113,7 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 
 	kprintf("kOS v0.6.12\n");
 
-	VFS_Node* elf = GetNodeFromPath("/floppy/helloworld");
+	VFS_Node* elf = GetNodeFromPath("/floppy/hw_module"); // This boy is causing problems.
 	// Find out the length of the file.
 
 	FileSeek(SEEK_EOF, elf);
@@ -125,8 +121,21 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	FileSeek(0, elf);
 	UInt8* elfBuf = kalloc(length);
 	ReadFile(elfBuf, length, elf);
-	ELF* elfExe = Parse_ELF(elfBuf);
-	CreateTaskFromELF(elfExe);
+	ELF* elfExe = LoadKernelDriver(elfBuf);
+
+	if(elfExe->error == NO_ERROR) {
+		void (*doItPtr)() = elfExe->start;
+		if(elfExe->start == NULL) {
+			kprintf("start == NULL\n");
+		} else {
+			doItPtr();
+		}
+	} else {
+		kprintf("elfexe_error=%d, %d\n", elfExe->error, GetErr());
+	}
+
+	// With the current version, we won't be executing this.
+	kprintf("Here now\n");
 	return 0;
 }
 

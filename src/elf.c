@@ -2,6 +2,7 @@
 #include <kheap.h>
 #include <paging.h>
 #include <tasking.h>
+#include <drivers.h>
 
 //#define ELF_DEBUG
 
@@ -146,6 +147,11 @@ typedef struct {
 	// from sh_idx, and length can derived from sectionHeader.
 } ProgBitsInfo;
 
+typedef struct {
+	Elf32_Shdr* header;
+	void* addr; // The address that the header needs to be relocated to.
+} SectionInfo;
+
 ELF* LoadKernelDriver(Pointer file) {
 	Elf32_Ehdr* hdr = (Elf32_Ehdr*) file;
 	ELF* elf = (ELF*) kalloc(sizeof(ELF));
@@ -187,6 +193,8 @@ ELF* LoadKernelDriver(Pointer file) {
 		return elf;
 	}
 
+	elf->error = -1;
+
 	// Now we need to navigate the sections to find .text and .data
 	#ifdef ELF_DEBUG
 	kprintf("e_shoff=%x, e_shentsize=%d, e_shnum=%d\n", hdr->e_shoff, hdr->e_shentsize, hdr->e_shnum);
@@ -197,14 +205,37 @@ ELF* LoadKernelDriver(Pointer file) {
 	// We should probably check e_shentsize
 
 	// What this loop does is loads the relocation tables into their respective ArrayList
-	ArrayList* TYPE(Elf32_Shdr*) rela = ALCreate();
-	ArrayList* TYPE(Elf32_Shdr*) rel = ALCreate();
+	ArrayList* TYPE(Elf32_Shdr*) relaSections = ALCreate();
+	ArrayList* TYPE(Elf32_Shdr*) relSections = ALCreate();
 	ArrayList* TYPE(ProgBitsInfo*) progBits = ALCreate();
 
-	Elf32_Shdr* symtab = NULL;
+	Elf32_Shdr* symtabSection = NULL;
+	Elf32_Shdr* strtabSection = NULL;
+
+	Elf32_Sym* symtab = NULL;
+	char* strtab = NULL;
+	char* shstrtab = NULL;
+
+	if(hdr->e_shstrndx != SHN_UNDEF) {
+		shstrtab = (file + sections[hdr->e_shstrndx].sh_offset);
+	}
+
+	SectionInfo* sectionInfo = kalloc(sizeof(SectionInfo)*hdr->e_shnum);
+	memset(sectionInfo, 0, sizeof(SectionInfo)*hdr->e_shnum);
 
 	int i;
 	for(i=0; i<hdr->e_shnum; i++) {
+		sectionInfo[i].header = &sections[i];
+		// If the section needs to be loaded into memory, allocate ourselves driver space for it.
+		if(sections[i].sh_flags & SHF_ALLOC) {
+			sectionInfo[i].addr = AllocateDriverSpace(sections[i].sh_size / PAGE_SIZE + 1);
+			if(sectionInfo[i].addr == NULL) {
+				kprintf("AllocateDriverSpace error %d.\n", GetErr());
+			}
+
+			memcpy(sectionInfo[i].addr, (file+sections[i].sh_offset), sections[i].sh_size);
+		}
+
 		switch(sections[i].sh_type) {
 			default: {
 
@@ -212,43 +243,80 @@ ELF* LoadKernelDriver(Pointer file) {
 
 			case SHT_RELA: {
 				// Good old relocations.
-				ALAdd(rela, &sections[i]);
+				ALAdd(relaSections, &sections[i]);
 			} break;
 
 			case SHT_REL: {
 				// Good old relocations.
-				ALAdd(rel, &sections[i]);
+				ALAdd(relSections, &sections[i]);
 			} break;
 
 			case SHT_SYMTAB: {
-				symtab = &sections[i];
+				symtabSection = &sections[i];
+				symtab = (Elf32_Sym*) (symtabSection->sh_offset + file);
 			} break;
 
-			case SHT_PROGBITS: {
-				// We need to put this into an allocated space
-				void* addr = AllocateDriverSpace(sections[i].sh_size / PAGE_SIZE);
-				// Copy the "progbits" over to the new addr.
-				void* fileAddr = (file + sections[i].sh_offset);
-				memcpy(addr, fileAddr, sections[i].sh_size);
-				ProgBitsInfo* info = kalloc(sizeof(ProgBitsInfo));
-				info->addr = addr;
-				info->requestedAddr = sections[i].sh_addr;
-				info->length = sections[i].sh_size;
-				info->sectionHeader = &sections[i];
-				info->sh_idx = i;
-				ALAdd(progBits, info);
+			case SHT_STRTAB: {
+				if(i == hdr->e_shstrndx) {
+					break; // We are breaking from the switch, not the "for" loop.
+				}
+				strtabSection = &sections[i];
+				strtab = (sections[i].sh_offset + file);
 			} break;
 		}
 	}
 
-	ALIterator* itr = ALGetItr(rel);
+	ALIterator* itr = ALGetItr(relSections);
 	while(ALItrHasNext(itr)) {
 		Elf32_Shdr* rel_hdr = (Elf32_Shdr*) ALItrNext(itr);
 		int rel_length = rel_hdr->sh_size / rel_hdr->sh_entsize;
-		Elf32_Rel* rel = (Elf32_Rel*) ((UInt32)file + rel_hdr->sh_addr);
+		Elf32_Rel* rel = (Elf32_Rel*) ((UInt32)file + rel_hdr->sh_offset);
+		Elf32_Shdr* sectionToRelocate = &sections[rel_hdr->sh_info];
+
 		// Process the relocations
+		kprintf("newRelocationTable\n");
+
 		int i;
 		for(i=0; i<rel_length; i++) {
+			int relType = ELF32_R_TYPE(rel[i].r_info);
+			int relOffset = (int) rel[i].r_offset;
+
+			switch(relType) {
+				case R_386_32: {
+					// Ok so we find the symbol.
+					int relSym = ELF32_R_SYM(rel[i].r_info);
+					Elf32_Sym* sym = &symtab[relSym];
+					//Elf32_Shdr* shdr = &sections[sym->st_shndx];
+					// Find the address that the relocation should be applied to
+					UInt32 relocationAddrDiff = (sectionInfo[rel_hdr->sh_info].addr - sectionInfo[rel_hdr->sh_info].header->sh_addr);
+
+					Elf32_Word* relApplicationAddr = (Elf32_Word*) (sectionInfo[rel_hdr->sh_info].addr + relOffset);
+
+					// We want to add sym->st_value to the value at relOffset, also relocate it to the address specified.
+					*relApplicationAddr = (Elf32_Word) (sym->st_value + *relApplicationAddr + relocationAddrDiff); // *relApplicationAddr is the implicit addend.
+
+					kprintf("Here we have _ %s, %x\n", &shstrtab[sectionToRelocate->sh_name], *relApplicationAddr);
+				} break;
+
+				case R_386_PC32: {
+					int relSym = ELF32_R_SYM(rel[i].r_info);
+					Elf32_Sym* sym = &symtab[relSym];
+
+					kprintf("Here we have %s,%x\n", &shstrtab[sectionToRelocate->sh_name], &shstrtab[sectionToRelocate->sh_name]);
+
+					Elf32_Word* relApplicationAddr = (Elf32_Word*) (sectionInfo[rel_hdr->sh_info].addr + relOffset);
+
+					// S + A - P
+					*relApplicationAddr = (Elf32_Word) (sym->st_value + *relApplicationAddr - relOffset);
+
+					kprintf("rel2 = %x\n", *relApplicationAddr);
+					
+				} break;
+
+				default: {
+					kprintf("Unsupported relocation type.  %d\n", relType);
+				} break;
+			}
 			/*
 			r_offset This member gives the location at which to apply the relocation action. For a relocatable
 				file, the value is the byte offset from the beginning of the section to the storage unit affected
@@ -267,6 +335,26 @@ ELF* LoadKernelDriver(Pointer file) {
 
 		// TODO: FINISH
 	}
+
+
+	elf->start = hdr->e_entry;
+	elf->dir = NULL;
+	elf->error = 0;
+
+	// TODO:  Search for an entry ponit.
+	// Loop through our symbol table looking for a symbol which is linked to "_start"
+
+	if(strtab != NULL) {
+		kprintf("strtab=%x, symtab=%x\n", strtab, symtab);
+		for(i=0; i<symtabSection->sh_size/symtabSection->sh_entsize; i++) {
+			kprintf("sym_name=%s, %x\n", &strtab[symtab[i].st_name], &strtab[symtab[i].st_name]);
+		}
+	} else {
+		kprintf("strtab==NULL\n");
+	}
+
+	kprintf("%x, %x, %x\n", hdr->e_entry, elf->dir, elf->error);
+	return elf;
 }
 
 char* elfErrors[] = {"NO_ERROR", "UNSUPPORTED_FEATURE", "UNSUPPORTED_CPU_ARCH", "WRONG_VERSION", "INVALID_MAGIC_BYTES", "INVALID_ELF_CLASS", "INVALID_ENDIAN"};

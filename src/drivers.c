@@ -9,6 +9,11 @@
 void* driverAllocPtr = NULL;
 
 
+int DriversInit() {
+	driverAllocPtr = (void*) DRIVER_SPACE;
+	return 0;
+}
+
 //int MapAllocatedPageTo(PageDirectory* dir, void* virtAddr, int flags);
 //int MapAllocatedPageBlockTo(PageDirectory* dir, void* virtAddr, int flags);
 
@@ -31,7 +36,9 @@ void* AllocateDriverSpace(int numPages) {
 	void* returnPtr = driverAllocPtr;
 
 	int pageBlocksToAllocate = numPages >> 5; // 32 pages in a page block, >> 5 = / 32.
-	int pagesToAllocate = numPages - pageBlocksToAllocate << 5; // basically numPages % 32.
+	int pagesToAllocate = numPages - (pageBlocksToAllocate << 5); // basically numPages % 32.
+
+	kprintf("pagesToAllocate=%d\n", pagesToAllocate);
 
 	int i;
 	for(i=0; i<pageBlocksToAllocate; i++) {
@@ -42,10 +49,14 @@ void* AllocateDriverSpace(int numPages) {
 	}
 
 	for(i=0; i<pagesToAllocate; i++) {
-		MapAllocatedPageTo(NULL, driverAllocPtr, PAGE_KERNEL);
+		if(MapAllocatedPageTo(NULL, driverAllocPtr, PAGE_KERNEL)==-1) {
+			kprintf("MapAllocatedPage Failure\n");
+		}
+		
 		driverAllocPtr += PAGE_SIZE;
 	}
 
+	SetErr(SUCCESS);
 	return returnPtr;
 
 }

@@ -6,7 +6,7 @@
 #include <common/arraylist.h>
 #include <err.h>
 
-//#define FAT12_DEBUG
+#define FAT12_DEBUG
 //#define FAT12_DEBUG_VERBOSE
 
 #define FAT12_CONTEXTS_NUM 32
@@ -659,12 +659,19 @@ int FAT12_LoadDirectory(VFS_Node* node) {
 				lfnArrayLength = lfnEntry->order & 0xF;
 				memset(longFileNameArray, 0, sizeof(LongFileNameEntry*)*lfnArrayLength);
 
+				// I bet you it's this itr that's causing us our problems.
 				ALIterator* itr = ALGetItr(longFileNameCollection);
 
 				// Copy everything in the ArrayList to the array.
 				longFileNameArray[(lfnEntry->order&0xF)-1] = lfnEntry;
 				while(ALItrHasNext(itr)) {
+					HeapHeader* hhdr = (HeapHeader*)((void*)itr-sizeof(HeapHeader));
+					kprintf("%x\n", hhdr->magic_flags);
+
 					LongFileNameEntry* tmpLfnEntry = (LongFileNameEntry*) ALItrNext(itr);
+
+					kprintf("tmplfn=%x\n", tmpLfnEntry);
+					
 					longFileNameArray[(tmpLfnEntry->order&0xF)-1] = tmpLfnEntry;
 				}
 
@@ -711,13 +718,15 @@ int FAT12_LoadDirectory(VFS_Node* node) {
 			lfnameBuffer2[j] = 0;
 
 			#ifdef FAT12_DEBUG
-			kprintf("lfname=%s\n", lfnameBuffer2);
+			kprintf("lfname=%s, lfnArrayLength=%d\n", lfnameBuffer2, lfnArrayLength);
 			#endif
 
 			kfree(longFileNameArray);
 			longFileNameArray = NULL;
+			lfnArrayLength = 0;
 
-			ALClear(longFileNameCollection);
+			// We're done with the long file names, so we can free the pointers in the list.
+			ALClear(longFileNameCollection, TRUE);
 		}
 
 		if(entries[i].attribute != FAT12_LONG_FILENAME) {

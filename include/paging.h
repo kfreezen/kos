@@ -12,7 +12,7 @@ typedef UInt32 PageTableEntry;
 
 typedef struct __page_dir {
 	PageDirectoryEntry d[1024];
-	PageDirectoryEntry kd[1024]; // All the addresses as seen by the kernel. (physical or virtual?)
+	PageDirectoryEntry kd[1024]; // All the addresses as seen by the kernel.  These are virtual addresses, dummy.
 	UInt32 phys;
 	Int32 dirType;
 } PageDirectory;

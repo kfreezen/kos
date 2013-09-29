@@ -216,7 +216,7 @@ void* heap_alloc(Heap* heap, UInt32 size) {
 
 void* heap_alloc_ex(Heap* heap, UInt32 size, Bool pg_align) {
 	#ifdef KHEAP_DEBUG
-	kprintf("heap_alloc_ex(%x,%x,%x)\n", heap, size, pg_align);
+	kprintf("heap_alloc_ex(%x,%x,%x) ", heap, size, pg_align);
 	#endif
 	
 	// Round up to a 4-byte alignment.
@@ -237,6 +237,9 @@ void* heap_alloc_ex(Heap* heap, UInt32 size, Bool pg_align) {
 			kprintf("AAAAHHHH!!!!! INVALID HEADER!!!!\n");
 			return 0;
 		}
+	} else if(header->magic_flags != (HEAP_MAGIC | HEAP_FREE)) {
+		kprintf("header->magic_flags == %x, should equal %x\n", header->magic_flags, HEAP_MAGIC | HEAP_FREE);
+		while(1){}
 	}
 	
 	HeapFooter* footer = header->footer;
@@ -261,7 +264,7 @@ void* heap_alloc_ex(Heap* heap, UInt32 size, Bool pg_align) {
 		header->magic_flags &= ~HEAP_FREE;
 		
 		#ifdef KHEAP_DEBUG
-		kprintf("rc0,%x,%x\n",size,block_size);
+		kprintf("rc0 %x\n",header);
 		#endif
 		
 		return (void*) ((unsigned)header+sizeof(HeapHeader));
@@ -269,7 +272,7 @@ void* heap_alloc_ex(Heap* heap, UInt32 size, Bool pg_align) {
 		header->magic_flags &= ~HEAP_FREE;
 		
 		#ifdef KHEAP_DEBUG
-		kprintf("rc1\n");
+		kprintf("rc1 %x\n", header);
 		#endif
 		
 		return (void*) ((unsigned)header+sizeof(HeapHeader));
@@ -285,6 +288,11 @@ void* heap_alloc_ex(Heap* heap, UInt32 size, Bool pg_align) {
 		
 		header->magic_flags &= ~HEAP_FREE;
 		//kprintf("header=%x, footer=%x, newHeader=%x, newFooter=%x\n", header, footer, newHeader, newFooter);
+
+		#ifdef KHEAP_DEBUG
+		kprintf("rc2 %x, %x\n", header, header->magic_flags);
+		#endif
+
 		return (void*) ((unsigned)header+sizeof(HeapHeader));
 	}
 	
@@ -382,9 +390,26 @@ void contractHeap(Heap* heap, int amountToLeave) {
 }
 
 void heap_free(Heap* heap, void* pointer) {
+	#ifdef KHEAP_DEBUG
+	kprintf("heap_free(%x, %x)\n", heap, pointer);
+	#endif
+
+	if(pointer==NULL) {
+		kprintf("Hey dude, your pointer is NULL\n");
+		return;
+	}
+
+	// Just quietly return because this isn't under our jurisdiction.
+	if(pointer < heap->start || pointer > heap->end) {
+		#ifdef KHEAP_DEBUG
+		kprintf("Pointer not in heap\n");
+		#endif
+		return;
+	}
+
 	HeapHeader* header = pointer-sizeof(HeapHeader);
 	if((header->magic_flags & 0xFFFF0000) != HEAP_MAGIC) {
-		kprintf("Invaild free! %x\n", pointer);
+		kprintf("Invalid free! %x\n", pointer);
 		return;
 	}
 	

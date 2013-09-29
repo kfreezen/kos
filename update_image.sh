@@ -14,4 +14,4 @@ sudo cp kbmaps.dat /media/loop0/kbmaps.dat
 sleep 0.25s
 sudo umount /media/loop0
 
-sudo qemu-system-x86_64 -soundhw sb16 -vga std -fda /dev/loop0 -serial stdio
+sudo qemu-system-x86_64 -soundhw sb16 -vga std -fda /dev/loop0 -monitor stdio

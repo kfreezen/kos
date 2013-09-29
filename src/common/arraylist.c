@@ -58,7 +58,7 @@ int ALAdd(ArrayList* list, void* value) {
 
 void ALRemove(ArrayList* list, int idx) {
 	void** listData = (void**) list->listData;
-	listData[idx] = 0;
+	void* addressToFree = listData[idx] = 0;
 	Bitset* bits = list->bits;
 	Bitset_Set(bits, idx, 0);
 	
@@ -66,6 +66,9 @@ void ALRemove(ArrayList* list, int idx) {
 	if(idx==list->length-1) {
 		--list->length;
 	}
+
+	// Since heap_free only tries to free the things inside the heap, we are good to go.
+	kfree(addressToFree);
 }
 
 void expand(ArrayList* list) {
@@ -99,7 +102,11 @@ void contract(ArrayList* list) {
 	Bitset_Resize(list->bits, list->capacity);
 }
 
-void ALClear(ArrayList* list) {
+void ALClear(ArrayList* list, int doFreePointers) {
+	if(doFreePointers) {
+		ALFreePointers(list);
+	}
+
 	memset(list->listData, 0, sizeof(void*)*list->length);
 	Bitset_Clear(list->bits);
 }
@@ -156,6 +163,7 @@ Bool ALItrHasNext(ALIterator* itr) {
 void* ALItrNext(ALIterator* itr) {
 	if(itr->nextIdx==-1) {
 		if(!ALItrHasNext(itr)) {
+			kprintf("ALItrHasNext==false\n");
 			return NULL;
 		}
 	}
@@ -163,8 +171,9 @@ void* ALItrNext(ALIterator* itr) {
 	void** listData = (void**) itr->list->listData;
 	void* tmp = listData[itr->nextIdx];
 	itr->idx = itr->nextIdx;
-	itr->nextIdx++;
-	// itr->nextIdx = -1;
+	//itr->nextIdx++;
+	itr->nextIdx = -1;
+	// The -1 switch must be due to using a bitset.
 	return tmp;
 }
 
@@ -172,7 +181,20 @@ void ALFreeItr(ALIterator* itr) {
 	kfree(itr);
 }
 
+void ALFreePointers(ArrayList* list) {
+	ALIterator* itr = ALGetItr(list);
+	while(ALItrHasNext(itr)) {
+		kfree(ALItrNext(itr));
+	}
+
+	ALFreeItr(itr);
+}
+
 void ALFreeList(ArrayList* list) {
+	// This is probably a slow solution, but it helps cure some
+	// of the memory leaks.
+	ALFreePointers(list);
+
 	kfree(list->allocatedListPtr);
 	Bitset_Free(list->bits);
 	kfree(list);
