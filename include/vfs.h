@@ -50,6 +50,9 @@ fileType:
 	FILE_DIRECTORY
 **/
 
+// It should be noted that File* and VFS_Node* are the same as of 10/13/13, but in the future they will be different.
+// But we are making the change right now in order to make the switch more clean.
+
 #include <err.h>
 
 #define ERR_EOF_ENCOUNTERED ERR_DEFINED_ELSEWHERE_BOTTOM+0
@@ -62,7 +65,8 @@ fileType:
 #define FILE_DEVICE 2
 #define FILE_DIRECTORY 3
 #define MOUNTPOINT 1<<7
-#define FLAGS (MOUNTPOINT)
+#define NOT_STALE 1<<8
+#define FLAGS (MOUNTPOINT | NOT_STALE)
 
 #define NAME_LENGTH 128
 
@@ -98,6 +102,8 @@ typedef struct VFS_Node {
 	int (*tell)(struct VFS_Node* node);
 } VFS_Node;
 
+typedef VFS_Node File;
+
 typedef struct {
 	ArrayList* TYPE(VFS_Node*) files;
 } DirectoryData;
@@ -109,12 +115,12 @@ typedef int (*dirload_func)(VFS_Node* node);
 typedef VFS_Node* (*getnode_func)(VFS_Node* node, const char* name);
 
 // Should return an arraylist of child nodes.
-typedef ArrayList* TYPE(VFS_Node*) (*listfiles_func)(VFS_Node* dir);
+typedef ArrayList* TYPE(VFS_Node*) (*listfiles_func)(File* dir);
 
-typedef int (*write_func)(const void* buf, int len, VFS_Node* node);
-typedef int (*read_func)(void* buf, int len, VFS_Node* node);
-typedef filePosType (*seek_func)(filePosType newPos, struct VFS_Node* node);
-typedef filePosType (*tell_func)(VFS_Node* node);
+typedef int (*write_func)(const void* buf, int len, File* node);
+typedef int (*read_func)(void* buf, int len, File* node);
+typedef filePosType (*seek_func)(filePosType newPos, File* node);
+typedef filePosType (*tell_func)(File* node);
 
 void VFS_Init();
 VFS_Node* VFS_GetRoot();
@@ -131,12 +137,15 @@ int LoadDirectory(VFS_Node* dir);
 ArrayList* ListFiles(VFS_Node* dir);
 VFS_Node* GetNode(VFS_Node* node, const char* name);
 
-int ReadFile(void* buf, int len, VFS_Node* node);
-int WriteFile(const void* buf, int len, VFS_Node* node);
-int FileSeek(int newPos, VFS_Node* node);
-int FileTell(VFS_Node* node);
+int ReadFile(void* buf, int len, File* node);
+int WriteFile(const void* buf, int len, File* node);
+int FileSeek(int newPos, File* node);
+int FileTell(File* node);
+#define CloseFile(f) // This will eventually be a real function that actually does something to a file.
 
-VFS_Node* GetNodeFromPath(const char* path);
+int fgetline(File* file, char* buf, int maxlen, char end);
+
+File* GetFileFromPath(const char* path);
 
 #define SEEK_EOF 0x7FFFFFFF
 #endif

@@ -14,7 +14,7 @@ int PutString(String s);
 void PutHexEx(UInt32 num, Bool noZeroes, Bool hexIdent);
 void PutHex(UInt32 num);
 
-void PutDec(UInt32 num);
+void PutDec(int num);
 
 void PutFloat(float n);
 

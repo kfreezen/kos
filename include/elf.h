@@ -133,6 +133,7 @@ ELF* LoadKernelDriver(Pointer file);
 #define INVALID_MAGIC_BYTES 4
 #define INVALID_ELF_CLASS 5
 #define INVALID_ENDIAN 6
+#define UNDEFINED_SYMBOL 7
 
 #define SHN_UNDEF 0
 #define SHN_LORESERVE 0xff00
@@ -169,6 +170,8 @@ ELF* LoadKernelDriver(Pointer file);
 #define STB_WEAK 2
 #define STB_LOPROC 13
 #define STB_HIPROC 15
+
+#define STN_UNDEF 0
 
 #define STT_NOTYPE 0
 #define STT_OBJECT 1

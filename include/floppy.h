@@ -7,7 +7,7 @@
 int FloppyInit();
 void FloppyLBAToCHS(int lba, int *head, int *track, int *sector);
 UInt8* FloppyReadSector(int sector);
-int FloppyReadSectorNoAlloc(int lba, void* buffer);
+int FloppyReadSectorNoAlloc(int lba, void* buffer, int maxLen);
 
 int Floppy_GetError();
 

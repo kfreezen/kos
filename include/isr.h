@@ -20,22 +20,24 @@ void registerSyscall(int eax, Syscall s);
 
 int ISR_Init();
 
-#define IRQ0  32
-#define IRQ1  33
-#define IRQ2  34
-#define IRQ3  35
-#define IRQ4  36
-#define IRQ5  37
-#define IRQ6  38
-#define IRQ7  39
-#define IRQ8  40
-#define IRQ9  41
-#define IRQ10 42
-#define IRQ11 43
-#define IRQ12 44
-#define IRQ13 45
-#define IRQ14 46
-#define IRQ15 47
+#define IRQBASE 32
+#define IRQ(i) (IRQBASE+(i))
+#define IRQ0  IRQ(0)
+#define IRQ1  IRQ(1)
+#define IRQ2  IRQ(2)
+#define IRQ3  IRQ(3)
+#define IRQ4  IRQ(4)
+#define IRQ5  IRQ(5)
+#define IRQ6  IRQ(6)
+#define IRQ7  IRQ(7)
+#define IRQ8  IRQ(8)
+#define IRQ9  IRQ(9)
+#define IRQ10 IRQ(10)
+#define IRQ11 IRQ(11)
+#define IRQ12 IRQ(12)
+#define IRQ13 IRQ(13)
+#define IRQ14 IRQ(14)
+#define IRQ15 IRQ(15)
 
 // TODO:  Simplify SYSCALL_CONSOLE and take out the PUTHEX and PUTDEC
 

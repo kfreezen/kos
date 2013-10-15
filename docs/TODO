@@ -6,11 +6,11 @@ Do testing of the floppy driver and the FAT12 VFS driver
 	by loading a >2KB text file into memory and printing
 	it to the screen. --
 
-Add relocation support to the ELF parser.
+Add relocation support to the ELF parser. --
 
 Add a semi-syscall kernel mode interrupt to allow the external
 	drivers to set themselves up.  Documentation for this
-	should be in docs/KernelDriverInterruptDoc
+	should be in docs/driverInterface
 
 Add a "filename beautifier" to the FAT12 driver for those cases
 	where a long file name entry is not available.  This

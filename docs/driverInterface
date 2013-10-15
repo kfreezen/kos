@@ -1,0 +1,49 @@
+The Driver interface is interrupt 71.
+
+eax=0:  INSTALL_IRQ:
+	bl=irq_number, ecx=handler_address
+
+	This installs the handler specified in ecx to the irq specified in bl.
+eax=1:  MEMORY_SERVICES:
+	ebx=0:  ALLOCATE:
+		ecx=SIZE
+
+		This returns a pointer to the kernel heap in eax.
+	ebx=1:  FREE:
+		ecx=POINTER
+		This frees the pointer in ecx.
+
+eax=2:  CONSOLE_SERVICES:
+	ebx=0:  KPUTS:
+		ecx=STRING
+
+		Prints the NULL terminated string in ecx to the kernel screen device.
+
+eax=3:  VFS_SERVICES:
+	ebx=0:  VFS_GETNODE:
+		ecx=pathString
+
+		Returns a pointer to the VFS_Node returned by this function.
+		Returns NULL on failure.
+
+	ebx=1:  VFS_READ:
+		ecx=buf, edx=len, esi=node
+
+		Reads from VFS node.
+		Returns an integer describing how much was read.
+	ebx=2:  VFS_WRITE:
+		ecx=buf, edx=len, esi=node
+
+		Writes to VFS node (FILE)
+		Returns an integer describing how much was written.
+	ebx=3:  VFS_SEEK:
+		ecx=newPos, edx=node
+
+		Seeks file to newPos.
+		Returns the new position within the file.
+	ebx=4:  VFS_TELL:
+		ecx=node
+
+		Tells the file pointer to eax.
+		Returns the file pointer position.
+		

@@ -9,6 +9,8 @@ int DriversInit();
 // and returns the allocated virtual address to the module requesting it.
 void* AllocateDriverSpace(int numPages);
 
+void KernelSymbolsLoad();
+
 #define DRIVER_SPACE 0xA0000000
 
 #endif
