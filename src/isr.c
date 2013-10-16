@@ -6,6 +6,7 @@
 #include <tasking.h>
 #include <debugger.h>
 #include <debugdef.h>
+#include <driver_interface.h>
 
 #include <isr.h>
 
@@ -131,10 +132,6 @@ static void gpf_handler(Registers regs) {
 	for(;;);
 }
 
-static void checkpoint_handler(Registers regs) {
-	kprintf("CHECKPOINT %x\n", regs.ebx);
-}
-
 static void invalid_opcode_handler(Registers regs) {
 	kprintf("INVALID_OPCODE:  eip=%x, esp=%x\npid=%d\n", regs.eip, regs.useresp, GetPID());
 	
@@ -198,6 +195,61 @@ static void syscall_task(Registers* regs) {
 	regs->eax = GetPID();
 }
 
+#include <driver_interface.h>
+
+void driver_interface_handler(Registers regs) {
+	switch(regs.eax) {
+		case INSTALL_IRQ: {
+			registerIntHandler(IRQ(regs.ebx&0xF), (IntHandler)regs.ecx);
+		} break;
+
+		case MEMORY_SERVICES: {
+			switch(regs.ebx) {
+				case ALLOC: {
+					regs.eax = kalloc(regs.ecx);
+				} break;
+
+				case FREE: {
+					kfree((Pointer)regs.ecx);
+				} break;
+			}
+		} break;
+
+		case CONSOLE_SERVICES: {
+			switch(regs.ebx) {
+				case KPUTS: {
+					PutString((String)regs.ecx);
+				} break;
+			}
+		}
+
+		case VFS_SERVICES: {
+			switch(regs.ebx) {
+				case VFS_GETNODE: {
+					regs.eax = (unsigned) GetFileFromPath((const char*) regs.ecx);
+				} break;
+
+				case VFS_READ: {
+					regs.eax = (int) ReadFile((void*) regs.ecx, (int) regs.edx, (VFS_Node*) regs.esi);					
+				} break;
+
+				case VFS_WRITE: {
+					regs.eax = (int) WriteFile((void*) regs.ecx, (int) regs.edx, (VFS_Node*) regs.esi);
+					break;
+				}
+
+				case VFS_SEEK: {
+					regs.eax = (int) FileSeek((int) regs.ecx, (VFS_Node*) regs.ebx);
+				} break;
+
+				case VFS_TELL: {
+					regs.eax = (int) FileTell((VFS_Node*) regs.ecx);
+				}
+			}
+		}
+	}
+}
+
 int ISR_Init() {
 	if(isr_isInit) {
 		return 1;
@@ -218,10 +270,10 @@ int ISR_Init() {
 	registerIntHandler(13, gpf_handler);
 	registerIntHandler(14, page_fault_handler);
 	
-	registerIntHandler(IRQ1, null_kb_handler);
-	registerIntHandler(IRQ7, null_irq7_handler);
+	registerIntHandler(IRQ(1), null_kb_handler);
+	registerIntHandler(IRQ(7), null_irq7_handler);
 	
-	registerIntHandler(71, checkpoint_handler);
+	registerIntHandler(71, driver_interface_handler);
 	
 	registerSyscall(SYSCALL_EXIT, syscall_exit);
 	registerSyscall(SYSCALL_CONSOLE, syscall_console);

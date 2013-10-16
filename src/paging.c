@@ -4,7 +4,7 @@
 #include <print.h>
 #include <debugdef.h>
 
-#define PAGING_DEBUG
+//#define PAGING_DEBUG
 
 PageDirectory staticKPageDir __attribute__((aligned(0x1000)));
 

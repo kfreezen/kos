@@ -89,12 +89,12 @@ UInt16 FAT12_GetClusterFromFAT(FAT12_Context* context, int prevCluster) {
 	int entryOffset = fatOffset%bpb->bytesPerSector;
 	
 	if(fatSectorInBuffer!=fatSector) {
-		FloppyReadSectorNoAlloc(fatSector, fatBuffer);
+		FloppyReadSectorNoAlloc(fatSector, fatBuffer, FAT12_SECTOR_SIZE);
 		fatSectorInBuffer = fatSector;
 	}
 	
 	if(entryOffset >= bpb->bytesPerSector) {
-		FloppyReadSectorNoAlloc(fatSector+1, fatBuffer+bpb->bytesPerSector);
+		FloppyReadSectorNoAlloc(fatSector+1, fatBuffer+bpb->bytesPerSector, FAT12_SECTOR_SIZE);
 	}
 
 	UInt16 table_value = *((UInt16*)(&fatBuffer[entryOffset]));
@@ -112,9 +112,6 @@ UInt16 FAT12_GetClusterFromFAT(FAT12_Context* context, int prevCluster) {
 	return table_value;
 }
 
-Byte dirBuffer[512];
-
-#define rootBuffer dirBuffer
 FAT12_File* FAT12_GetFile(FAT12_Context* context, const char* file) {
 	#ifdef FAT12_DEBUG
 	char space = ' ';
@@ -125,6 +122,8 @@ FAT12_File* FAT12_GetFile(FAT12_Context* context, const char* file) {
 	kprintf("FAT12_GetFile(%x,%s)%c", context, file, space);
 	#endif
 	
+	Byte* rootBuffer = kalloc(FAT12_SECTOR_SIZE);
+
 	Bpb* bpb = context->bpb;
 	
 	// This is the root directory's first data sector
@@ -136,12 +135,13 @@ FAT12_File* FAT12_GetFile(FAT12_Context* context, const char* file) {
 	char lfnameBuffer2[256];
 	int len;
 	Bool doneWithName = false;
+	FAT12_File* ret = NULL;
 
 	int i=0;
 	for(i=0; i<bpb->directoryEntries; i++) {
 		
 		if(!(i%32)) {
-			FloppyReadSectorNoAlloc(rootDir, rootBuffer);
+			FloppyReadSectorNoAlloc(rootDir, rootBuffer, FAT12_SECTOR_SIZE);
 			rootDir++;
 		}
 		
@@ -207,7 +207,8 @@ FAT12_File* FAT12_GetFile(FAT12_Context* context, const char* file) {
 			kprintf("ret %x\n", fat12_file);
 			#endif
 			
-			return fat12_file;
+			ret = fat12_file;
+			break;
 		}
 	}
 	
@@ -215,9 +216,9 @@ FAT12_File* FAT12_GetFile(FAT12_Context* context, const char* file) {
 	kprintf("ret NULL\n");
 	#endif
 	
-	return NULL;
+	kfree(rootBuffer);
+	return ret;
 }
-#undef rootBuffer
 
 Byte readSectorBuffer[512];
 
@@ -226,16 +227,21 @@ Returns:	1 if the last sector read was the last sector in the chain.
 			-1 if FAT12_Read_LL had some weird unexpected stuff happen.
 			0 if FAT12_Read_LL had everything go well.
 **/
-int FAT12_Read_LL(FAT12_File* node, UInt32 offset, UInt32 length, UInt8* buf) {
+int FAT12_Read_LL(FAT12_File* node, UInt32 offset, UInt32 length, UInt8* buffer) {
 	if(node == NULL) {
 		SetErr(ERR_INVALID_ARG);
 		return -1;
 	}
 	
 	#ifdef FAT12_DEBUG
-	kprintf("FAT12_Read_LL(%x, %x, %x, %x)\n", node, offset, length, buf);
+	kprintf("FAT12_Read_LL(%x, %x, %x, %x)\n", node, offset, length, buffer);
 	#endif
 	
+	if(offset >= node->locationData->fileSize) {
+		SetErr(ERR_EOF_ENCOUNTERED);
+		return -1;
+	}
+
 	// Let's make sure our offset into the file has a 512 byte granularity.
 	offset &= ~(FAT12_SECTOR_SIZE-1);
 	
@@ -249,8 +255,6 @@ int FAT12_Read_LL(FAT12_File* node, UInt32 offset, UInt32 length, UInt8* buf) {
 	}
 	
 	//int size = (node->locationData->fileSize&~0x1FF)+0x200;
-	
-	UInt8* buffer = buf;
 	
 	FAT12_Context* context = node->context;
 	DirEntry* entry = (DirEntry*) node->locationData;
@@ -301,7 +305,7 @@ int FAT12_Read_LL(FAT12_File* node, UInt32 offset, UInt32 length, UInt8* buf) {
 		kprintf("reading %x,%x,rel=%x\n", &buffer[i*512], absSector, relSector);
 		#endif
 
-		FloppyReadSectorNoAlloc(absSector, readSectorBuffer);
+		FloppyReadSectorNoAlloc(absSector, readSectorBuffer, FAT12_SECTOR_SIZE);
 
 		memcpy(&buffer[i*512], readSectorBuffer, 512);
 
@@ -404,6 +408,12 @@ filePosType FAT12_Seek(filePosType newPos, VFS_Node* node) {
 	// There should be a function to get fileSize in the VFS.
 	if(newPos > file->locationData->fileSize) {
 		newPos = file->locationData->fileSize;
+		if(!file->locationData) {
+			kprintf("Location Data is null.\n");
+		} else {
+			kprintf("Location data %s == %x.\n", node->name, file);
+		}
+		kprintf("newPos = %d\n", newPos);
 	}
 
 	FAT12_FileData* data = (FAT12_FileData*) file->data;
@@ -433,7 +443,7 @@ int FAT12_VFSRead(void* _buf, int len, VFS_Node* node) {
 
 		// filePos&(~FAT12_SECTOR_SIZE) is the file position that it starts from.
 		// filePos%FAT12_SECTOR_SIZE is because the buffer only loads 512 bytes at a time, and
-		// readBuffer[513] would not be get.
+		// readBuffer[513] would not be gotten.  "would not be get"?  Seriously, I must have been tired.
 		int toRead = FAT12_SECTOR_SIZE - (filePos % FAT12_SECTOR_SIZE);
 		
 		if(toRead+totalRead > len) {
@@ -456,12 +466,13 @@ int FAT12_VFSRead(void* _buf, int len, VFS_Node* node) {
 		fileData->filePos = filePos;
 	}
 
+	kfree(readBuffer);
 	return totalRead;
 }
 
 int FAT12_Init(FAT12_Context* context, const char* parentPath, const char* mountpointName) {
 	// Get our parent from parentPath
-	VFS_Node* parent = GetNodeFromPath(parentPath);
+	VFS_Node* parent = GetFileFromPath(parentPath);
 	if(parent == NULL) {
 		kprintf("Error in fat12:  parent==NULL, parentPath=%s\n", parentPath);
 	}
@@ -495,11 +506,17 @@ ArrayList* FAT12_ListFiles(VFS_Node* dir) {
 }
 
 VFS_Node* FAT12_GetNode(VFS_Node* dir, const char* name) {
+	#ifdef FAT12_DEBUG
+	kprintf("FAT12_GetNode(%x, %s)\n", dir, name);
+	#endif
+
 	if(dir == NULL) {
+		kprintf("FAT12_GetNode:  dir==null\n");
 		return NULL;
 	}
 
 	if(!isdir(dir)) {
+		kprintf("FAT12_GetNode:  dir is not a directory\n");
 		return NULL;
 	}
 
@@ -513,6 +530,7 @@ VFS_Node* FAT12_GetNode(VFS_Node* dir, const char* name) {
 
 	while(ALItrHasNext(itr)) {
 		VFS_Node* node = ALItrNext(itr);
+
 		if(!strcmp(name, node->name)) {
 			return node;
 		}
@@ -564,21 +582,38 @@ VFS_Node* FAT12_AddFile(int fileType, const char* name, VFS_Node* parent) {
 	}
 }
 
+#define LFNAME_MAX 256
 int FAT12_LoadDirectory(VFS_Node* node) {
+	if(node->options.flags & NOT_STALE) {
+		return 0;
+	}
+
+	Byte* dirBuffer = (Byte*) kalloc(512);
+	memset(dirBuffer, 0, FAT12_SECTOR_SIZE);
+
+	int retVal = 0;
+
+	#ifdef FAT12_DEBUG
+	kprintf("dirBuffer = %x\n", dirBuffer);
+	#endif
+
 	if(!isdir(node)) {
-		return -1;
+		retVal = -1;
+		goto cleanup;
 	}
 
 	FAT12_File* dir = (FAT12_File*) node->data;
 	if(!(dir->locationData->attribute&FAT12_ATTR_DIR)) {
-		return -1;
+		retVal = -1;
+		goto cleanup;
 	}
 
+	ArrayList* TYPE(VFS_Node*) dirFiles = (ArrayList*)dir->data;
 	// Clear our list.
-	ALFreeList((ArrayList*)dir->data);
+	/*ALFreeList((ArrayList*)dir->data);
 	
 	ArrayList* TYPE(VFS_Node*) dirFiles = ALCreate();
-	dir->data = dirFiles;
+	dir->data = dirFiles;*/
 
 	Bpb* bpb = dir->context->bpb;
 
@@ -604,10 +639,13 @@ int FAT12_LoadDirectory(VFS_Node* node) {
 	#endif
 
 	DirEntry* entries = (DirEntry*) dirBuffer;
-	wchar_t lfnameBuffer[256];
-	char lfnameBuffer2[256];
+	wchar_t lfnameBuffer[LFNAME_MAX];
+	char lfnameBuffer2[LFNAME_MAX];
 	int len;
 	Bool doneWithName = false;
+
+	memset(lfnameBuffer, 0, LFNAME_MAX);
+	memset(lfnameBuffer, 0, LFNAME_MAX * sizeof(wchar_t));
 
 	// Specify the first sector to read in
 	if(!isRoot) {
@@ -616,7 +654,8 @@ int FAT12_LoadDirectory(VFS_Node* node) {
 		absDirSector = getFirstDataSector(bpb);
 	}
 
-	int i;
+	int i,iDir;
+	iDir = 0;
 
 	ArrayList* TYPE(LongFileNameEntry*) longFileNameCollection = ALCreate();
 	LongFileNameEntry** longFileNameArray = NULL;
@@ -624,11 +663,10 @@ int FAT12_LoadDirectory(VFS_Node* node) {
 
 	// Why do we have !isRoot?  Because the loop will manually "break" on the last cluster
 	for(i=0; i<bpb->directoryEntries || !isRoot; i++) {
-		if(!(i%32)) {
-			// This takes care of loading our first sector for us.
-			FloppyReadSectorNoAlloc(absDirSector, dirBuffer);
+		if(!(i%16)) {
 			// Now load our next cluster number into dirCluster and our next sector number into absDirSector.
-			if(!isRoot) {
+			// We also need to wait until i is 16 before getting the next cluster.
+			if(!isRoot && i) {
 				// Not necessarily contiguous so we find the next cluster from the FAT.
 				dirCluster = FAT12_GetClusterFromFAT(dir->context, dirCluster);
 				if(dirCluster >= FAT12_EOF) {
@@ -636,26 +674,38 @@ int FAT12_LoadDirectory(VFS_Node* node) {
 				}
 
 				absDirSector = getAbsoluteSector(dirCluster, bpb);
-			} else {
+			} else if(i) {
 				absDirSector ++;
 			}
+
+			// This takes care of loading our first sector for us.
+			FloppyReadSectorNoAlloc(absDirSector, dirBuffer, FAT12_SECTOR_SIZE);
 		}
+		iDir = i % 16;
 
 		// If the first byte of the name is 0x00, that means that the rest of the entries are NULL as well.
 
-		if(entries[i].name[0] == (char) FAT12_ENTRY_NULL) {
+		if(entries[iDir].name[0] == (char) FAT12_ENTRY_NULL) {
 			break;
-		} else if(entries[i].name[0] == (char) FAT12_ENTRY_EMPTY) {
+		} else if(entries[iDir].name[0] == (char) FAT12_ENTRY_EMPTY) {
 			continue;
 		}
 
-		if(entries[i].attribute==0xF) {
-			LongFileNameEntry* lfnEntry = (LongFileNameEntry*) &entries[i];
+		if(entries[iDir].attribute==0xF) {
+			// You dummy, &entries[i] was being overwritten, oh well, now I've fixed it.
+
+			LongFileNameEntry* lfnEntry = (LongFileNameEntry*) kalloc(sizeof(LongFileNameEntry));
+			memcpy(lfnEntry, &entries[iDir], sizeof(LongFileNameEntry));
 
 			ALAdd(longFileNameCollection, lfnEntry);
 
 			if(lfnEntry->order&0xF0) {
 				longFileNameArray = kalloc(sizeof(LongFileNameEntry*)*lfnEntry->order&0x0F);
+				
+				#ifdef FAT12_DEBUG
+				kprintf("kalloc_lfnArray = %x\n", longFileNameArray);
+				#endif
+				
 				lfnArrayLength = lfnEntry->order & 0xF;
 				memset(longFileNameArray, 0, sizeof(LongFileNameEntry*)*lfnArrayLength);
 
@@ -670,7 +720,9 @@ int FAT12_LoadDirectory(VFS_Node* node) {
 
 					LongFileNameEntry* tmpLfnEntry = (LongFileNameEntry*) ALItrNext(itr);
 
+					#ifdef FAT12_DEBUG_VERBOSE
 					kprintf("tmplfn=%x\n", tmpLfnEntry);
+					#endif
 					
 					longFileNameArray[(tmpLfnEntry->order&0xF)-1] = tmpLfnEntry;
 				}
@@ -721,16 +773,16 @@ int FAT12_LoadDirectory(VFS_Node* node) {
 			kprintf("lfname=%s, lfnArrayLength=%d\n", lfnameBuffer2, lfnArrayLength);
 			#endif
 
+			// This is freeing the array of long file name entries, NOT the buffer for the name.
 			kfree(longFileNameArray);
 			longFileNameArray = NULL;
 			lfnArrayLength = 0;
-
 			// We're done with the long file names, so we can free the pointers in the list.
 			ALClear(longFileNameCollection, TRUE);
 		}
 
-		if(entries[i].attribute != FAT12_LONG_FILENAME) {
-			int fileType = (entries[i].attribute == FAT12_ATTR_DIR) ? FILE_DIRECTORY : FILE_FILE;
+		if(entries[iDir].attribute != FAT12_LONG_FILENAME) {
+			int fileType = (entries[iDir].attribute == FAT12_ATTR_DIR) ? FILE_DIRECTORY : FILE_FILE;
 
 			char* name = NULL;
 			if(doneWithName) {
@@ -740,18 +792,33 @@ int FAT12_LoadDirectory(VFS_Node* node) {
 				name = kalloc(12);
 				memset(name, 0, 12);
 
-				strncpy(name, 11, entries[i].name);
+				strncpy(name, 11, entries[iDir].name);
 			}
 
-			VFS_Node* file = AddFile(fileType, name, node);
+			int foundFile = 0;
+			ALIterator* itr = ALGetItr(dirFiles);
+			while(ALItrHasNext(itr)) {
+				VFS_Node* search = ALItrNext(itr);
+				if(!strcmp(search->name, name)) {
+					foundFile = 1;
+				}
+			}
 
-			if(file != NULL) {
+			VFS_Node* file;
+
+			if(!foundFile) {
+				file = AddFile(fileType, name, node);
+			}
+
+			if(file != NULL && !foundFile) {
+
 				// Set up our FAT12_File
 				FAT12_File* fileData = (FAT12_File*) file->data;
 				fileData->locationData = kalloc(sizeof(DirEntry));
-				memcpy(fileData->locationData, &entries[i], sizeof(DirEntry));
+
+				memcpy(fileData->locationData, &entries[iDir], sizeof(DirEntry));
 				fileData->context = dir->context;
-			} else {
+			} else if(!foundFile) {
 				kprintf("AddFile(%x, %s, %x) produced null\n", fileType, name, node);
 			}
 
@@ -769,16 +836,21 @@ int FAT12_LoadDirectory(VFS_Node* node) {
 		#ifdef FAT12_DEBUG_VERBOSE
 		
 		char name_debug[12];
-		strncpy(name_debug, 11, entries[i].name);
+		strncpy(name_debug, 11, entries[iDir].name);
 		name_debug[11]=0;
 		
-		kprintf("name_debug=%s, attr=%x\n", name_debug, entries[i].attribute);
+		kprintf("name_debug=%s, attr=%x\n", name_debug, entries[iDir].attribute);
 		#endif
 	}
 	
 	#ifdef FAT12_DEBUG
-	kprintf("ret 0\n");
+	kprintf("ret %d\n", retVal);
 	#endif
 
-	return 0;
+	node->options.flags |= NOT_STALE;
+cleanup:
+	// cleanup and return
+	kfree(dirBuffer);
+
+	return retVal;
 }

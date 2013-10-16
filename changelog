@@ -1,7 +1,0 @@
-Goals for v0.6.3:
-	Read sector from floppy.
-Goals for v0.6.4:
-	FAT Filesystem driver.
-	Read file from floppy.
-Goals for v0.7.0:
-	Internal debugger.

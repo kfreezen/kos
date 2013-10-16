@@ -128,6 +128,7 @@ void KPutChar(char c) {
 	if(!noecho) PutChar(c);
 }	
 
+int kb_stall = 0;
 static void kb_callback(Registers regs) {
 	//kprintf("kbint\n");
 	
@@ -141,6 +142,7 @@ static void kb_callback(Registers regs) {
 				break;
 				
 			default:
+				kb_stall = !kb_stall;
 				KPutChar(maps[active_maps[curmap]].map[scan_code+((shift_state)?128:0)]);
 				break;
 		}
@@ -153,8 +155,12 @@ static void kb_callback(Registers regs) {
 				
 		}
 	}
-	
+
 	outb(0x20, 0x20);
+	asm("sti");
+	while(kb_stall) {
+
+	}
 }
 
 #define KEYBOARD_DEV_NAME "keyboard"

@@ -3,7 +3,7 @@
 #include <print.h>
 #include <err.h>
 
-//#define VFS_DEBUG
+#define VFS_DEBUG
 
 VFS_Node* vfsRoot = NULL;
 UInt32 vfsId = 0;
@@ -152,8 +152,6 @@ int CreateMountPoint(VFS_Node* node, void* data,
 	}
 }
 
-// TODO:  Figure out how to parse the path sanely
-
 VFS_Node* AddFile(int fileType, const char* name, VFS_Node* parent) {
 	if(parent && parent->addfile) {
 		return parent->addfile(fileType, name, parent);
@@ -179,6 +177,7 @@ VFS_Node* GetNode(VFS_Node* node, const char* name) {
 	if(node!=NULL && node->getnode) {
 		return node->getnode(node, name);
 	} else {
+		kprintf("VFS_GetNode:  node or node->getnode is NULL.  node=%x, node->getnode=%x\n", node, node->getnode);
 		return NULL;
 	}
 }
@@ -188,7 +187,7 @@ VFS_Node* VFS_GetRoot() {
 }
 
 // This algorithm is horrible, because worst case it has to iterate through every single file on each level.
-VFS_Node* GetNodeFromPath(const char* path) {
+File* GetFileFromPath(const char* path) {
 	if(vfsRoot == NULL) {
 		return NULL;
 	}
@@ -215,7 +214,7 @@ VFS_Node* GetNodeFromPath(const char* path) {
 			}
 			
 			#ifdef VFS_DEBUG
-			kprintf("tok=%s\n", node->name);
+			kprintf("tok=%s\n", tok);
 			#endif
 
 			if(!isdir(newNode)) {
@@ -241,9 +240,43 @@ VFS_Node* GetNodeFromPath(const char* path) {
 	return ret;
 }
 
+int fgetline(File* file, char* buf, int maxlen, char end) {
+	int base = FileTell(file);
+	int readItr = 0;
+
+	/*kprintf("fgetline file.length=%x\n", FileSeek(SEEK_EOF, file));
+	FileSeek(base, file);*/
+	FileSeek(0, file);
+	
+	while(1) {
+		if(ReadFile(buf+readItr, 32, file)<32) {
+			// encountered EOF, probably...
+			break;
+		}
+
+		readItr += 32;
+		
+		// Now we want to copy over our stuff.
+		int i;
+		for(i=readItr-32; i<readItr; i++) {
+			if(buf[i] == end) {
+				buf[i] = 0;
+				FileSeek(base+i+1, file);
+				return 0;
+			}
+		}
+
+		if(readItr >= maxlen) {
+			return 1;
+		}
+	}
+
+	return -1;
+}
+
 int ReadFile(void* buf, int len, VFS_Node* node) {
 	#ifdef VFS_DEBUG
-	kprintf("node=%x, node->read=%x\n", node, node->read);
+	kprintf("node=%x, node->read=%x, node->name=%s\n", node, node->read, node->name);
 	#endif
 
 	if(node && node->read) {
@@ -267,9 +300,8 @@ int WriteFile(const void* buf, int len, VFS_Node* node) {
 
 int LoadDirectory(VFS_Node* dir) {
 	if(dir && dir->dirload) {
-		return dir->dirload(dir);
+		int ret = dir->dirload(dir);
 	}
-
 	return -1;
 }
 

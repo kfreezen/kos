@@ -170,7 +170,7 @@ int ScreenWrite(const void* _userBuf, int len, VFS_Node* node) {
 }
 
 int Screen_Init() {
-	VFS_Node* screen = GetNodeFromPath("/dev/screen");
+	VFS_Node* screen = GetFileFromPath("/dev/screen");
 	if(screen == NULL) {
 		DeviceData scrDev;
 

@@ -102,10 +102,15 @@ void PutHex(UInt32 num) {
 	PutHexEx(num, true, true);
 }
 
-void PutDec(UInt32 num) {
+void PutDec(int num) {
 	if(num == 0) {
 		PutChar('0');
 		return;
+	}
+
+	if(num < 0) {
+		num = -num;
+		_PrintChar('-');
 	}
 	
 	Int32 acc = num;

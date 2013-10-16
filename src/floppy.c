@@ -448,7 +448,7 @@ start_readsector:
 	FDC_SenseInterrupt(&st0, &cyl);
 }
 
-int FloppyReadSectorNoAlloc(int lba, void* buffer) {
+int FloppyReadSectorNoAlloc(int lba, void* buffer, int maxLen) {
 	if(currentDrive>=4) {
 		return -1;
 	}
@@ -474,7 +474,7 @@ int FloppyReadSectorNoAlloc(int lba, void* buffer) {
 		FDC_ControlMotor(currentDrive, FALSE);
 	}
 
-	memcpy(buffer, DMA_BUFFER, FloppyGetDevice()->sectorSize);
+	memcpy(buffer, DMA_BUFFER, (FloppyGetDevice()->sectorSize > maxLen) ? maxLen : FloppyGetDevice()->sectorSize);
 	if(!cacheEntry) {
 		Floppy_AddCacheEntry(lba, buffer);
 	}
@@ -487,7 +487,7 @@ int FloppyReadSectorNoAlloc(int lba, void* buffer) {
 
 UInt8* FloppyReadSector(int sectorLBA) {
 	UInt8* sectorData = (UInt8*) kalloc(512);
-	if(FloppyReadSectorNoAlloc(sectorLBA, sectorData)==-1) {
+	if(FloppyReadSectorNoAlloc(sectorLBA, sectorData, 512)==-1) {
 		kfree(sectorData);
 		return NULL;
 	}

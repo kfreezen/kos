@@ -1175,8 +1175,8 @@ DEMO GRAPHICS MODES
 }*/
 
 void changeTo320x200_Graphics() {
-	write_regs(g_320x200x256);
-	memset((Pointer)0xA0000, 0, 320*200);
+	write_regs(g_320x200x256_modex);
+	memset((Pointer)0xA0000, 0xFF, 320*200);
 }
 
 /*****************************************************************************

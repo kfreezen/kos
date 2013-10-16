@@ -69,18 +69,17 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	//memcpy(mboot_hdr, mboot, sizeof(MultibootHeader));
 	
 	//new_start(stack, mboot_hdr);
-	
 	GDT_Init();
 	IDT_Init();
 	ISR_Init();
 	asm volatile("sti");
 	
 	PIT_Init(PIT_MSTIME);
-	
+
 	init_kheap();
 	InitPaging((mboot_hdr->mem_lower+mboot_hdr->mem_upper)&~3);
 	InitKernelHeap();
-	
+
 	VFS_Init();
 	DevFS_Init();
 	
@@ -103,57 +102,77 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	KB_Init(0);
 	kprintf("[ok]\n");
 
-	FAT12_Init(FAT12_GetContext(FloppyGetDevice()), "/", "floppy");
+	FAT12_Init(FAT12_GetContext(FloppyGetDevice()), "/", "sys");
 	
 	InitTasking();
 
-	kprintf("Kernel init done...\n");
+	KernelSymbolsLoad();
 
 	//Cls();
 
 	kprintf("kOS v0.6.12\n");
 
-	VFS_Node* elf = GetNodeFromPath("/floppy/hw_module"); // This boy is causing problems.
-	// Find out the length of the file.
+	//kprintf("kprintf symbol = %x\n", getKernelSymbol("kprintf"));
+	File* initScript = GetFileFromPath("/sys/init.script");
+	FileSeek(0, initScript); // Due to these being global objects, we have to do such ugly things as this.
 
-	FileSeek(SEEK_EOF, elf);
-	int length = FileTell(elf);
-	FileSeek(0, elf);
-	UInt8* elfBuf = kalloc(length);
-	ReadFile(elfBuf, length, elf);
-	ELF* elfExe = LoadKernelDriver(elfBuf);
-
-	if(elfExe->error == NO_ERROR) {
-		void (*doItPtr)() = elfExe->start;
-		if(elfExe->start == NULL) {
-			kprintf("start == NULL\n");
-		} else {
-			doItPtr();
+	char* lineBuf = kalloc(256);
+	int doBreak = 0;
+	while(1) {
+		kprintf("is=%x\n", initScript);
+		if(fgetline(initScript, lineBuf, 256, '\n')==-1) {
+			doBreak = 1;
 		}
-	} else {
-		kprintf("elfexe_error=%d, %d\n", elfExe->error, GetErr());
+
+		// Now parse it.
+		char* tok = strtok(lineBuf, " ");
+		kprintf("%s, %x\n", tok,tok);
+		if(!strcmp(tok, "load_driver")) {
+			kprintf("load_driver ");
+
+			tok = strtok(NULL, " ");
+			kprintf("%s\n", tok);
+
+			// Load the driver specified.
+			File* drv = GetFileFromPath(tok);
+			if(drv != NULL) {
+				int drvLength = FileSeek(SEEK_EOF, drv);
+				FileSeek(0, drv);
+				void* drvBuf = kalloc(drvLength);
+				kprintf("%s\n", drv->name);
+				/*ReadFile(drvBuf, drvLength, drv);
+				ELF* elf = LoadKernelDriver(drvBuf);
+				kprintf("elf->start=%x\n", elf->start);
+				void (*driverInit)() = (void (*)()) elf->start;
+				driverInit();*/
+
+				kfree(drvBuf);
+				drvBuf = NULL;
+
+				CloseFile(drv);
+			}
+		}
+
+		if(doBreak) {
+			break;
+		}
 	}
 
-	// With the current version, we won't be executing this.
-	kprintf("Here now\n");
+	CloseFile(initScript);
+	kfree(lineBuf);
+
+	/*File* file = GetFileFromPath("/sys/hw_module");
+	int fileLength = FileSeek(SEEK_EOF, file);
+	FileSeek(0, file);
+
+	void* exe = kalloc(fileLength);
+	ReadFile(exe, fileLength, file);
+	ELF* elf = LoadKernelDriver(exe);
+	void (*doItPtr)() = elf->start;
+	doItPtr();*/
+
+	kprintf("Kernel init done...\n");
 	return 0;
-}
-
-void thread1() {
-	thread('b');
-}
-
-void thread2() {
-	thread('c');
-}
-
-void thread(char c) {
-	int j;
-	for(j=0;;j++) {
-		if(!(j%8000)) {
-			kprintf("%c", c);
-		}
-	}
 }
 
 #endif

@@ -4,7 +4,7 @@
 #include <tasking.h>
 #include <drivers.h>
 
-//#define ELF_DEBUG
+#define ELF_DEBUG
 
 extern PageDirectory* currentPageDir;
 
@@ -17,7 +17,7 @@ Bool CheckMagic(unsigned char* ident) {
 		int i;
 		
 		for(i=0; i<4; i++) {
-			kprintf("hdr->e_ident[%d] = %x\n", i, hdr->e_ident[i]);
+			kprintf("hdr->e_ident[%d] = %x\n", i, ident[i]);
 		}
 		#endif
 		
@@ -152,6 +152,7 @@ typedef struct {
 	void* addr; // The address that the header needs to be relocated to.
 } SectionInfo;
 
+// WARNING:  THIS FUNCTION HAS UGLY CODE!!! DO NOT ENTER IF YOU VALUE YOUR SANITY!
 ELF* LoadKernelDriver(Pointer file) {
 	Elf32_Ehdr* hdr = (Elf32_Ehdr*) file;
 	ELF* elf = (ELF*) kalloc(sizeof(ELF));
@@ -233,6 +234,10 @@ ELF* LoadKernelDriver(Pointer file) {
 				kprintf("AllocateDriverSpace error %d.\n", GetErr());
 			}
 
+			#ifdef ELF_DEBUG
+			kprintf("sectionInfo[%d].addr=%x, str=%s\n", i, sectionInfo[i].addr, shstrtab[sectionInfo[i].header->sh_name]);
+			#endif
+
 			memcpy(sectionInfo[i].addr, (file+sections[i].sh_offset), sections[i].sh_size);
 		}
 
@@ -269,18 +274,18 @@ ELF* LoadKernelDriver(Pointer file) {
 	ALIterator* itr = ALGetItr(relSections);
 	while(ALItrHasNext(itr)) {
 		Elf32_Shdr* rel_hdr = (Elf32_Shdr*) ALItrNext(itr);
-		int rel_length = rel_hdr->sh_size / rel_hdr->sh_entsize;
+		int rel_length = rel_hdr->sh_size / rel_hdr->sh_entsize; // Number of relocation entries.
 		Elf32_Rel* rel = (Elf32_Rel*) ((UInt32)file + rel_hdr->sh_offset);
 		Elf32_Shdr* sectionToRelocate = &sections[rel_hdr->sh_info];
 
 		// Process the relocations
-		kprintf("newRelocationTable\n");
 
 		int i;
 		for(i=0; i<rel_length; i++) {
 			int relType = ELF32_R_TYPE(rel[i].r_info);
 			int relOffset = (int) rel[i].r_offset;
 
+			// I WARNED YOU!!! I'M SO, SO SORRY.
 			switch(relType) {
 				case R_386_32: {
 					// Ok so we find the symbol.
@@ -288,48 +293,59 @@ ELF* LoadKernelDriver(Pointer file) {
 					Elf32_Sym* sym = &symtab[relSym];
 					//Elf32_Shdr* shdr = &sections[sym->st_shndx];
 					// Find the address that the relocation should be applied to
-					UInt32 relocationAddrDiff = (sectionInfo[rel_hdr->sh_info].addr - sectionInfo[rel_hdr->sh_info].header->sh_addr);
+					UInt32 relocationAddrDiff = (sectionInfo[sym->st_shndx].addr - sectionInfo[rel_hdr->sh_info].header->sh_addr);
 
 					Elf32_Word* relApplicationAddr = (Elf32_Word*) (sectionInfo[rel_hdr->sh_info].addr + relOffset);
 
 					// We want to add sym->st_value to the value at relOffset, also relocate it to the address specified.
 					*relApplicationAddr = (Elf32_Word) (sym->st_value + *relApplicationAddr + relocationAddrDiff); // *relApplicationAddr is the implicit addend.
 
-					kprintf("Here we have _ %s, %x\n", &shstrtab[sectionToRelocate->sh_name], *relApplicationAddr);
+					kprintf("Here we have _ %s, %x\n", &shstrtab[sectionInfo[sym->st_shndx].header->sh_name], *relApplicationAddr);
 				} break;
 
 				case R_386_PC32: {
 					int relSym = ELF32_R_SYM(rel[i].r_info);
+					int externalSymbol = 0;
+					void* externalSymbolValue;
+
+					if(symtab[relSym].st_shndx == SHN_UNDEF) {
+						// We want to look through the kernel 
+						externalSymbolValue = getKernelSymbol(&strtab[symtab[relSym].st_name]);
+						symtab[relSym].st_value = externalSymbolValue;
+						if(externalSymbolValue == NULL) {
+							elf->start = 0;
+							elf->dir = NULL;
+							elf->error = UNDEFINED_SYMBOL;
+							kprintf("UNDEFINED_SYMBOL_ERROR\n");
+							return elf;
+						} else {
+							externalSymbol = 1;
+						}
+					}
+
 					Elf32_Sym* sym = &symtab[relSym];
 
-					kprintf("Here we have %s,%x\n", &shstrtab[sectionToRelocate->sh_name], &shstrtab[sectionToRelocate->sh_name]);
+					#ifdef ELF_DEBUG
+					kprintf("Here we have %s\n", &shstrtab[sectionToRelocate->sh_name]);
+					#endif
 
 					Elf32_Word* relApplicationAddr = (Elf32_Word*) (sectionInfo[rel_hdr->sh_info].addr + relOffset);
 
 					// S + A - P
-					*relApplicationAddr = (Elf32_Word) (sym->st_value + *relApplicationAddr - relOffset);
-
+					if(!externalSymbol) {
+						*relApplicationAddr = (Elf32_Word) (sym->st_value + *relApplicationAddr - relOffset);
+					} else {
+						*relApplicationAddr = (Elf32_Word) (externalSymbolValue + *relApplicationAddr - (sectionInfo[rel_hdr->sh_info].addr + relOffset));
+					}
+					#ifdef ELF_DEBUG
 					kprintf("rel2 = %x\n", *relApplicationAddr);
-					
+					#endif
 				} break;
 
 				default: {
 					kprintf("Unsupported relocation type.  %d\n", relType);
 				} break;
 			}
-			/*
-			r_offset This member gives the location at which to apply the relocation action. For a relocatable
-				file, the value is the byte offset from the beginning of the section to the storage unit affected
-				by the relocation. For an executable file or a shared object, the value is the virtual address of
-				the storage unit affected by the relocation.
-			r_info This member gives both the symbol table index with respect to which the relocation must be
-				made, and the type of relocation to apply. For example, a call instruction’s relocation entry
-				would hold the symbol table index of the function being called. If the index is STN_UNDEF,
-				the undefined symbol index, the relocation uses 0 as the ‘‘symbol value.’’ Relocation types
-				are processor-specific. When the text refers to a relocation entry’s relocation type or symbol
-				table index, it means the result of applying ELF32_R_TYPE or ELF32_R_SYM, respectively,
-				to the entry’s r_info member.
-			*/
 			
 		}
 
@@ -341,23 +357,37 @@ ELF* LoadKernelDriver(Pointer file) {
 	elf->dir = NULL;
 	elf->error = 0;
 
-	// TODO:  Search for an entry ponit.
 	// Loop through our symbol table looking for a symbol which is linked to "_start"
 
 	if(strtab != NULL) {
-		kprintf("strtab=%x, symtab=%x\n", strtab, symtab);
 		for(i=0; i<symtabSection->sh_size/symtabSection->sh_entsize; i++) {
+			#ifdef ELF_DEBUG
 			kprintf("sym_name=%s, %x\n", &strtab[symtab[i].st_name], &strtab[symtab[i].st_name]);
+			#endif
+
+			if(!strcmp("_start", &strtab[symtab[i].st_name])) {
+				// Section's virtual address + the symbol address.
+				elf->start = (void*) ((void*)sectionInfo[symtab[i].st_shndx].addr + (unsigned)symtab[i].st_value);
+			}
 		}
 	} else {
 		kprintf("strtab==NULL\n");
 	}
 
-	kprintf("%x, %x, %x\n", hdr->e_entry, elf->dir, elf->error);
+	// XXX:  I'm sure there are some other kallocs that don't have matching kfrees
+	// CLEANUP
+	kfree(sectionInfo);
+	// END CLEANUP
+
+	kprintf("%x, %x, %x\n", elf->start, elf->dir, elf->error);
 	return elf;
 }
 
-char* elfErrors[] = {"NO_ERROR", "UNSUPPORTED_FEATURE", "UNSUPPORTED_CPU_ARCH", "WRONG_VERSION", "INVALID_MAGIC_BYTES", "INVALID_ELF_CLASS", "INVALID_ENDIAN"};
+char* elfErrors[] = {
+	"NO_ERROR", "UNSUPPORTED_FEATURE", "UNSUPPORTED_CPU_ARCH", "WRONG_VERSION",
+	"INVALID_MAGIC_BYTES", "INVALID_ELF_CLASS", "INVALID_ENDIAN",
+	"UNDEFINED_SYMBOL"
+};
 
 char** GetElfErrors() {
 	return elfErrors;
