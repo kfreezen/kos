@@ -3,7 +3,6 @@
 #include <paging.h>
 #include <tasking.h>
 #include <drivers.h>
-#include <>
 
 #define ELF_DEBUG
 
@@ -212,7 +211,7 @@ ELF* LoadKernelDriver(Pointer file) {
 	//ArrayList* TYPE(ProgBitsInfo*) progBits = ALCreate();
 
 	Elf32_Shdr* symtabSection = NULL;
-	Elf32_Shdr* strtabSection = NULL;
+	//Elf32_Shdr* strtabSection;
 
 	Elf32_Sym* symtab = NULL;
 	char* strtab = NULL;
@@ -266,7 +265,7 @@ ELF* LoadKernelDriver(Pointer file) {
 				if(i == hdr->e_shstrndx) {
 					break; // We are breaking from the switch, not the "for" loop.
 				}
-				strtabSection = &sections[i];
+				//strtabSection = &sections[i];
 				strtab = (sections[i].sh_offset + file);
 			} break;
 		}

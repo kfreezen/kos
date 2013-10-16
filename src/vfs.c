@@ -241,7 +241,7 @@ File* GetFileFromPath(const char* path) {
 	File* fret = kalloc(sizeof(File)); // Tee-hee fret. stop fretting about it.
 	fret->node = ret;
 	fret->filePos = 0;
-	
+
 	return fret;
 }
 
@@ -303,9 +303,10 @@ int WriteFile(const void* buf, int len, File* file) {
 	return -1;
 }
 
-int LoadDirectory(File* dir) {
-	if(dir && dir->node && dir->node->dirload) {
-		int ret = dir->node->dirload(dir);
+int LoadDirectory(VFS_Node* dir) {
+	if(dir && dir->dirload) {
+		int ret = dir->dirload(dir);
+		return ret;
 	}
 	return -1;
 }
@@ -332,6 +333,14 @@ int FileTell(File* file) {
 // fewer things when the internal representation changes.
 inline VFS_Node* GetNodeFromFile(File* f) {
 	return (f) ? f->node : NULL;
+}
+
+File* GetFileFromNode(VFS_Node* node) {
+	File* file = kalloc(sizeof(File));
+	file->node = node;
+	file->filePos = 0;
+
+	return file;
 }
 
 void CloseFile(File* f) {

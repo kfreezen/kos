@@ -95,10 +95,10 @@ typedef struct VFS_Node {
 
 	VFS_Options options;
 
-	struct VFS_Node* (*addfile)(int, const char*, struct File*);
-	int (*dirload)(struct File*);
-	ArrayList* TYPE(VFS_Node*) (*listfiles)(struct File*);
-	struct VFS_Node* (*getnode)(struct File*, const char*);
+	struct VFS_Node* (*addfile)(int, const char*, struct VFS_Node*);
+	int (*dirload)(struct VFS_Node*);
+	ArrayList* TYPE(VFS_Node*) (*listfiles)(struct VFS_Node*);
+	struct VFS_Node* (*getnode)(struct VFS_Node*, const char*);
 	int (*write)(const void* buf, int len, struct File* node);
 	int (*read)(void* buf, int len, struct File* node);
 	int (*seek)(int newPos, struct File* node);
@@ -123,7 +123,7 @@ typedef int (*dirload_func)(VFS_Node* node);
 typedef VFS_Node* (*getnode_func)(VFS_Node* node, const char* name);
 
 // Should return an arraylist of child nodes.
-typedef ArrayList* TYPE(VFS_Node*) (*listfiles_func)(File* dir);
+typedef ArrayList* TYPE(VFS_Node*) (*listfiles_func)(VFS_Node* dir);
 
 typedef int (*write_func)(const void* buf, int len, File* node);
 typedef int (*read_func)(void* buf, int len, File* node);
@@ -141,7 +141,7 @@ int CreateMountPoint(VFS_Node* node, void* data,
 		seek_func seek, tell_func tell
 		);
 
-int LoadDirectory(File* dir);
+int LoadDirectory(VFS_Node* dir);
 ArrayList* ListFiles(VFS_Node* dir);
 VFS_Node* GetNode(VFS_Node* node, const char* name);
 
@@ -156,6 +156,7 @@ int fgetline(File* file, char* buf, int maxlen, char end);
 File* GetFileFromPath(const char* path);
 
 VFS_Node* GetNodeFromFile(File* file);
+File* GetFileFromNode(VFS_Node* node);
 
 #define SEEK_EOF 0x7FFFFFFF
 #endif

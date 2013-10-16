@@ -358,44 +358,37 @@ FileBuffer FAT12_Read_FB(FAT12_File* node, UInt32 off, UInt32 length) {
 // VFS Functions
 
 // TODO:  Create a VFS tell function to tell us (lol) where the file position is.
-filePosType FAT12_Tell(VFS_Node* node) {
-	if(node->data == NULL) {
-		SetErr(ERR_NULL_VALUE_ENCOUNTERED);
-		return -1;
-	}
-
-	FAT12_File* file = (FAT12_File*) node->data;
-
-	if(isdir(node)) {
+filePosType FAT12_Tell(File* file) {
+	if(isdir(GetNodeFromFile(file))) {
 		SetErr(ERR_FILE_EXPECTED);
 		return -1;
 	}
-
-	if(file->locationData == NULL) {
-		SetErr(ERR_NULL_VALUE_ENCOUNTERED);
-		return -1;
-	}
-
-	FAT12_FileData* data = (FAT12_FileData*) file->data;
-
+	
 	SetErr(SUCCESS);
-	return data->filePos;
+	return file->filePos;
 }
 
-filePosType FAT12_Seek(filePosType newPos, VFS_Node* node) {
-	if(node->data == NULL) {
+filePosType FAT12_Seek(filePosType newPos, File* file) {
+	if(file==NULL) {
 		SetErr(ERR_INVALID_ARG);
 		return -1;
 	}
 
-	FAT12_File* file = (FAT12_File*) node->data;
+	VFS_Node* node = GetNodeFromFile(file);
+
+	if(!node || node->data == NULL) {
+		SetErr(ERR_INVALID_ARG);
+		return -1;
+	}
+
+	FAT12_File* fat12File = (FAT12_File*) node->data;
 	
 	if(isdir(node)) {
 		SetErr(ERR_FILE_EXPECTED);
 		return -1;
 	}
 
-	if(file->locationData == NULL) {
+	if(fat12File->locationData == NULL) {
 		SetErr(ERR_NULL_VALUE_ENCOUNTERED);
 		return -1;
 	}
@@ -406,31 +399,31 @@ filePosType FAT12_Seek(filePosType newPos, VFS_Node* node) {
 	}
 
 	// There should be a function to get fileSize in the VFS.
-	if(newPos > file->locationData->fileSize) {
-		newPos = file->locationData->fileSize;
-		if(!file->locationData) {
+	if(newPos > fat12File->locationData->fileSize) {
+		newPos = fat12File->locationData->fileSize;
+		if(!fat12File->locationData) {
 			kprintf("Location Data is null.\n");
 		} else {
-			kprintf("Location data %s == %x.\n", node->name, file);
+			kprintf("Location data %s == %x.\n", node->name, fat12File->locationData);
 		}
 		kprintf("newPos = %d\n", newPos);
 	}
 
-	FAT12_FileData* data = (FAT12_FileData*) file->data;
-	data->filePos = newPos;
+	file->filePos = newPos;
 
 	SetErr(SUCCESS);
 	return newPos;
 }
 
-int FAT12_VFSRead(void* _buf, int len, VFS_Node* node) {
+int FAT12_VFSRead(void* _buf, int len, File* vfsFile) {
 	int bufPos = 0;
+
+	VFS_Node* node = GetNodeFromFile(vfsFile);
 
 	char* buf = (char*) _buf;
 
 	FAT12_File* file = (FAT12_File*) node->data;
-	FAT12_FileData* fileData = (FAT12_FileData*) file->data;
-	int filePos = fileData->filePos;
+	int filePos = vfsFile->filePos;
 
 	//int startClusterPos = filePos / FAT12_SECTOR_SIZE;
 	//int cluster = file->locationData->firstCluster;
@@ -463,7 +456,7 @@ int FAT12_VFSRead(void* _buf, int len, VFS_Node* node) {
 		totalRead += toRead;
 		bufPos += toRead;
 		filePos += toRead;
-		fileData->filePos = filePos;
+		vfsFile->filePos = filePos;
 	}
 
 	kfree(readBuffer);
@@ -472,12 +465,12 @@ int FAT12_VFSRead(void* _buf, int len, VFS_Node* node) {
 
 int FAT12_Init(FAT12_Context* context, const char* parentPath, const char* mountpointName) {
 	// Get our parent from parentPath
-	VFS_Node* parent = GetFileFromPath(parentPath);
+	File* parent = GetFileFromPath(parentPath);
 	if(parent == NULL) {
 		kprintf("Error in fat12:  parent==NULL, parentPath=%s\n", parentPath);
 	}
 
-	VFS_Node* mount = AddFile(FILE_DIRECTORY, mountpointName, parent);
+	VFS_Node* mount = AddFile(FILE_DIRECTORY, mountpointName, GetNodeFromFile(parent));
 	FAT12_File* dir = kalloc(sizeof(FAT12_File));
 	dir->data = ALCreate();
 	dir->context = context;

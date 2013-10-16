@@ -2,7 +2,7 @@
 #define DEVICE_H
 
 typedef UInt8* (*readSectorCaller)(int); // lba
-typedef int (*readSectorNoAllocCaller)(int, void*); // buffer,lba
+typedef int (*readSectorNoAllocCaller)(int, void*, int); // lba,buffer,max
 typedef void* (*getDeviceInfoCaller)();
 
 typedef struct Device {

@@ -29,6 +29,7 @@
 #include <ata.h>
 #include <dev.h>
 #include <drivers.h>
+#include <common.h>
 
 #define PIT_MSTIME 20
 

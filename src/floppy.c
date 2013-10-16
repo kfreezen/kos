@@ -542,7 +542,7 @@ Device floppy = {
 	512,
 	FloppyGetMediaInfo,
 	FloppyReadSector,
-	FloppyReadSectorNoAlloc,
+	FloppyReadSectorNoAlloc
 };
 
 Device* FloppyGetDevice() {

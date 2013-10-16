@@ -48,15 +48,16 @@ int GetAvailableBytes() {
 	return tmp - kb_buf_tail;
 }
 
-int kb_read(void* _userBuf, int len, VFS_Node* node) {
+int kb_read(void* _userBuf, int len, File* file) {
 	#ifdef KEYBOARD_DEBUG
-	kprintf("kb_read(%x, %x, %x)\n", userBuf, len, node);
+	kprintf("kb_read(%x, %x, %x)\n", userBuf, len, file);
 	#endif
 	char* userBuf = (char*) _userBuf;
 	
 	int toRead;
 
-	if(node->options.flags&O_NONBLOCKING) {
+	// TODO:  Move the options into the file struct.
+	if(GetNodeFromFile(file)->options.flags&O_NONBLOCKING) {
 		toRead = (GetAvailableBytes() < len) ? GetAvailableBytes() : len;
 	} else {
 		toRead = len;
