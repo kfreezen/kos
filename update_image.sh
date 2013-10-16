@@ -15,7 +15,7 @@ sudo cp kbmaps.dat /media/loop0/kbmaps.dat
 sudo cp init.script /media/loop0/init.script
 
 make drivers
-mkdir /media/loop0/drivers
+sudo mkdir /media/loop0/drivers
 sudo cp drv_src/*.ko /media/loop0/drivers/
 
 sleep 0.25s

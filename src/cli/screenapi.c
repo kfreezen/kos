@@ -130,7 +130,7 @@ int CLI_Init() { // TODO:  Figure out a way in which to find the width and heigh
 
 */
 
-int ScreenWrite(const void* _userBuf, int len, VFS_Node* node) {
+int ScreenWrite(const void* _userBuf, int len, File* node) {
 	const char* userBuf = (const char*) _userBuf;
 	
 	// This one is refreshingly simple, we just loop through the userBuf
@@ -170,7 +170,7 @@ int ScreenWrite(const void* _userBuf, int len, VFS_Node* node) {
 }
 
 int Screen_Init() {
-	VFS_Node* screen = GetFileFromPath("/dev/screen");
+	File* screen = GetFileFromPath("/dev/screen");
 	if(screen == NULL) {
 		DeviceData scrDev;
 
@@ -181,7 +181,11 @@ int Screen_Init() {
 		scrDev.write = ScreenWrite;
 		scrDev.read = NULL;
 
-		screen = RegisterDevice(&scrDev);
+		RegisterDevice(&scrDev);
+
+		// Not particularly efficient to get call the same
+		// thing twice.
+		screen = GetFileFromPath("/dev/screen");
 	}
 
 	SetPrintStream(screen);

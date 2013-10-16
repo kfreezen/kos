@@ -11,6 +11,8 @@ void* AllocateDriverSpace(int numPages);
 
 void KernelSymbolsLoad();
 
+void* getKernelSymbol(const char* symName);
+
 #define DRIVER_SPACE 0xA0000000
 
 #endif

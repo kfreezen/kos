@@ -3,6 +3,7 @@
 #include <paging.h>
 #include <tasking.h>
 #include <drivers.h>
+#include <>
 
 #define ELF_DEBUG
 
@@ -208,7 +209,7 @@ ELF* LoadKernelDriver(Pointer file) {
 	// What this loop does is loads the relocation tables into their respective ArrayList
 	ArrayList* TYPE(Elf32_Shdr*) relaSections = ALCreate();
 	ArrayList* TYPE(Elf32_Shdr*) relSections = ALCreate();
-	ArrayList* TYPE(ProgBitsInfo*) progBits = ALCreate();
+	//ArrayList* TYPE(ProgBitsInfo*) progBits = ALCreate();
 
 	Elf32_Shdr* symtabSection = NULL;
 	Elf32_Shdr* strtabSection = NULL;
@@ -352,6 +353,13 @@ ELF* LoadKernelDriver(Pointer file) {
 		// TODO: FINISH
 	}
 
+	// Clean up the stuff related to the relocation.
+	ALFreeItr(itr);
+	ALFreeList(relSections);
+	ALFreeList(relaSections);
+
+	relSections = NULL;
+	relaSections = NULL;
 
 	elf->start = hdr->e_entry;
 	elf->dir = NULL;

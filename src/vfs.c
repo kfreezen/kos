@@ -236,8 +236,13 @@ File* GetFileFromPath(const char* path) {
 	}
 
 	kfree(buf);
-	// It's probably a directory.
-	return ret;
+	
+	// Create ourselves a file handle for this.
+	File* fret = kalloc(sizeof(File)); // Tee-hee fret. stop fretting about it.
+	fret->node = ret;
+	fret->filePos = 0;
+	
+	return fret;
 }
 
 int fgetline(File* file, char* buf, int maxlen, char end) {
@@ -246,7 +251,7 @@ int fgetline(File* file, char* buf, int maxlen, char end) {
 
 	/*kprintf("fgetline file.length=%x\n", FileSeek(SEEK_EOF, file));
 	FileSeek(base, file);*/
-	FileSeek(0, file);
+	FileSeek(base, file);
 	
 	while(1) {
 		if(ReadFile(buf+readItr, 32, file)<32) {
@@ -274,51 +279,63 @@ int fgetline(File* file, char* buf, int maxlen, char end) {
 	return -1;
 }
 
-int ReadFile(void* buf, int len, VFS_Node* node) {
+int ReadFile(void* buf, int len, File* file) {
 	#ifdef VFS_DEBUG
-	kprintf("node=%x, node->read=%x, node->name=%s\n", node, node->read, node->name);
+	kprintf("file->node=%x, file->node->read=%x, file->node->name=%s\n", file->node, file->node->read, file->node->name);
 	#endif
 
-	if(node && node->read) {
-		return node->read(buf, len, node);
+	if(file && file->node && file->node->read) {
+		return file->node->read(buf, len, file);
 	}
 
-	if(!node) {
-		kprintf("node==NULL\n");
-	}
-
-	return -1;
-}
-
-int WriteFile(const void* buf, int len, VFS_Node* node) {
-	if(node && node->write) {
-		return node->write(buf, len, node);
+	if(!file) {
+		kprintf("readfile:file==NULL\n");
 	}
 
 	return -1;
 }
 
-int LoadDirectory(VFS_Node* dir) {
-	if(dir && dir->dirload) {
-		int ret = dir->dirload(dir);
+int WriteFile(const void* buf, int len, File* file) {
+	if(file && file->node && file->node->write) {
+		return file->node->write(buf, len, file);
+	}
+
+	return -1;
+}
+
+int LoadDirectory(File* dir) {
+	if(dir && dir->node && dir->node->dirload) {
+		int ret = dir->node->dirload(dir);
 	}
 	return -1;
 }
 
-int FileSeek(int newPos, VFS_Node* node) {
-	if(node && node->seek) {
-		return node->seek(newPos, node);
+int FileSeek(int newPos, File* file) {
+	if(file && file->node && file->node->seek) {
+		return file->node->seek(newPos, file);
 	}
 
 	SetErr(ERR_NULL_VALUE_ENCOUNTERED);
 	return -1;
 }
 
-int FileTell(VFS_Node* node) {
-	if(node && node->tell) {
-		return node->tell(node);
+int FileTell(File* file) {
+	if(file && file->node && file->node->tell) {
+		return file->node->tell(file);
 	}
 
 	SetErr(ERR_NULL_VALUE_ENCOUNTERED);
 	return -1;
+}
+
+// We want to use this instead of f->node in our code, so we break
+// fewer things when the internal representation changes.
+inline VFS_Node* GetNodeFromFile(File* f) {
+	return (f) ? f->node : NULL;
+}
+
+void CloseFile(File* f) {
+	// For now, a file is a pure VFS driver abstraction.  There is no external drivers that the
+	// VFS will need for this, so let's just free the file.
+	kfree(f);
 }

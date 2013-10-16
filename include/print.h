@@ -23,6 +23,6 @@ void kprintf(const char* fmt, ...);
 void Cls();
 void ClsEx(UInt8 color);
 
-void SetPrintStream(VFS_Node* printStream);
+void SetPrintStream(File* printStream);
 
 #endif

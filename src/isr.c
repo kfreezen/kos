@@ -206,7 +206,7 @@ void driver_interface_handler(Registers regs) {
 		case MEMORY_SERVICES: {
 			switch(regs.ebx) {
 				case ALLOC: {
-					regs.eax = kalloc(regs.ecx);
+					regs.eax = (unsigned) kalloc(regs.ecx);
 				} break;
 
 				case FREE: {
@@ -230,20 +230,20 @@ void driver_interface_handler(Registers regs) {
 				} break;
 
 				case VFS_READ: {
-					regs.eax = (int) ReadFile((void*) regs.ecx, (int) regs.edx, (VFS_Node*) regs.esi);					
+					regs.eax = (int) ReadFile((void*) regs.ecx, (int) regs.edx, (File*) regs.esi);					
 				} break;
 
 				case VFS_WRITE: {
-					regs.eax = (int) WriteFile((void*) regs.ecx, (int) regs.edx, (VFS_Node*) regs.esi);
+					regs.eax = (int) WriteFile((void*) regs.ecx, (int) regs.edx, (File*) regs.esi);
 					break;
 				}
 
 				case VFS_SEEK: {
-					regs.eax = (int) FileSeek((int) regs.ecx, (VFS_Node*) regs.ebx);
+					regs.eax = (int) FileSeek((int) regs.ecx, (File*) regs.ebx);
 				} break;
 
 				case VFS_TELL: {
-					regs.eax = (int) FileTell((VFS_Node*) regs.ecx);
+					regs.eax = (int) FileTell((File*) regs.ecx);
 				}
 			}
 		}

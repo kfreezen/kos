@@ -83,6 +83,9 @@ typedef int filePosType;
 
 // This is ugly code, but I guess that's what you get
 // for referencing a struct from within itself.
+
+struct File;
+
 typedef struct VFS_Node {
 	int fileType;
 	void* id;
@@ -92,17 +95,22 @@ typedef struct VFS_Node {
 
 	VFS_Options options;
 
-	struct VFS_Node* (*addfile)(int, const char*, struct VFS_Node*);
-	int (*dirload)(struct VFS_Node*);
-	ArrayList* TYPE(VFS_Node*) (*listfiles)(struct VFS_Node*);
-	struct VFS_Node* (*getnode)(struct VFS_Node*, const char*);
-	int (*write)(const void* buf, int len, struct VFS_Node* node);
-	int (*read)(void* buf, int len, struct VFS_Node* node);
-	int (*seek)(int newPos, struct VFS_Node* node);
-	int (*tell)(struct VFS_Node* node);
+	struct VFS_Node* (*addfile)(int, const char*, struct File*);
+	int (*dirload)(struct File*);
+	ArrayList* TYPE(VFS_Node*) (*listfiles)(struct File*);
+	struct VFS_Node* (*getnode)(struct File*, const char*);
+	int (*write)(const void* buf, int len, struct File* node);
+	int (*read)(void* buf, int len, struct File* node);
+	int (*seek)(int newPos, struct File* node);
+	int (*tell)(struct File* node);
 } VFS_Node;
 
-typedef VFS_Node File;
+typedef struct File {
+	VFS_Node* node;
+	filePosType filePos;
+} File;
+
+//typedef VFS_Node File;
 
 typedef struct {
 	ArrayList* TYPE(VFS_Node*) files;
@@ -133,7 +141,7 @@ int CreateMountPoint(VFS_Node* node, void* data,
 		seek_func seek, tell_func tell
 		);
 
-int LoadDirectory(VFS_Node* dir);
+int LoadDirectory(File* dir);
 ArrayList* ListFiles(VFS_Node* dir);
 VFS_Node* GetNode(VFS_Node* node, const char* name);
 
@@ -141,11 +149,13 @@ int ReadFile(void* buf, int len, File* node);
 int WriteFile(const void* buf, int len, File* node);
 int FileSeek(int newPos, File* node);
 int FileTell(File* node);
-#define CloseFile(f) // This will eventually be a real function that actually does something to a file.
+void CloseFile(File* f);
 
 int fgetline(File* file, char* buf, int maxlen, char end);
 
 File* GetFileFromPath(const char* path);
+
+VFS_Node* GetNodeFromFile(File* file);
 
 #define SEEK_EOF 0x7FFFFFFF
 #endif

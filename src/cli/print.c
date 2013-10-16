@@ -6,9 +6,9 @@
 
 extern void ClearScreen();
 
-VFS_Node* printStream = NULL;
+File* printStream = NULL;
 
-void SetPrintStream(VFS_Node* stream) {
+void SetPrintStream(File* stream) {
 	printStream = stream;
 }
 

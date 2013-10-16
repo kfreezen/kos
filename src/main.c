@@ -139,7 +139,7 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 				int drvLength = FileSeek(SEEK_EOF, drv);
 				FileSeek(0, drv);
 				void* drvBuf = kalloc(drvLength);
-				kprintf("%s\n", drv->name);
+				kprintf("%s\n", GetNodeFromFile(drv)->name);
 				/*ReadFile(drvBuf, drvLength, drv);
 				ELF* elf = LoadKernelDriver(drvBuf);
 				kprintf("elf->start=%x\n", elf->start);

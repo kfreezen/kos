@@ -13,7 +13,7 @@ DRV_SOURCES:=$(patsubst %.c, %.ko, $(DRV_SRC))
 SOURCES:=$(S_SOURCES) $(C_SOURCES)
 
 CC:=@gcc
-CFLAGS:=-I include -m32 -nostdlib -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -Wall
+CFLAGS:=-I include -m32 -nostdlib -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -Wall -Werror
 AS:=@nasm
 ASFLAGS:=-felf32
 LD:=@ld
