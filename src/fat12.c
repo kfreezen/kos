@@ -6,7 +6,7 @@
 #include <common/arraylist.h>
 #include <err.h>
 
-#define FAT12_DEBUG
+//#define FAT12_DEBUG
 //#define FAT12_DEBUG_VERBOSE
 
 #define FAT12_CONTEXTS_NUM 32
@@ -403,10 +403,15 @@ filePosType FAT12_Seek(filePosType newPos, File* file) {
 		newPos = fat12File->locationData->fileSize;
 		if(!fat12File->locationData) {
 			kprintf("Location Data is null.\n");
-		} else {
+		} 
+
+		#ifdef FAT12_DEBUG
+		else {
 			kprintf("Location data %s == %x.\n", node->name, fat12File->locationData);
 		}
 		kprintf("newPos = %d\n", newPos);
+		#endif
+		
 	}
 
 	file->filePos = newPos;
@@ -446,7 +451,10 @@ int FAT12_VFSRead(void* _buf, int len, File* vfsFile) {
 		// Let's read the sector that filePos is in
 		if(FAT12_Read_LL(file, filePos, FAT12_SECTOR_SIZE, readBuffer)==-1) {
 			// We can't really handle any of the errors here so just exit the loop
+			#ifdef FAT12_DEBUG
 			kprintf("FAT12_Read_LL err %d\n", GetErr());
+			#endif
+
 			break;
 		}
 
@@ -708,8 +716,6 @@ int FAT12_LoadDirectory(VFS_Node* node) {
 				// Copy everything in the ArrayList to the array.
 				longFileNameArray[(lfnEntry->order&0xF)-1] = lfnEntry;
 				while(ALItrHasNext(itr)) {
-					HeapHeader* hhdr = (HeapHeader*)((void*)itr-sizeof(HeapHeader));
-					kprintf("%x\n", hhdr->magic_flags);
 
 					LongFileNameEntry* tmpLfnEntry = (LongFileNameEntry*) ALItrNext(itr);
 

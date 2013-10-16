@@ -18,8 +18,6 @@ Bool kb_interrupt = false;
 extern IntHandler int_handlers[256];
 Syscall syscalls[512];
 
-extern void kb_syscall(Registers* regs);
-
 extern Task* current_task;
 extern Task* ready_queue;
 
@@ -277,7 +275,6 @@ int ISR_Init() {
 	
 	registerSyscall(SYSCALL_EXIT, syscall_exit);
 	registerSyscall(SYSCALL_CONSOLE, syscall_console);
-	registerSyscall(SYSCALL_KB, kb_syscall);
 	registerSyscall(SYSCALL_TASK, syscall_task);
 	
 	isr_isInit = true;

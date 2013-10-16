@@ -465,7 +465,10 @@ int MapAllocatedPageTo(PageDirectory* dir, void* virtualAddr, int flags) {
 		return -1;
 	} else {
 		UInt32 physAddr = AllocPage()<<12;
+
+		#ifdef PAGING_DEBUG
 		kprintf("physAddr=%x, %x\n", physAddr, table->t);
+		#endif
 		
 		table->t[pt_index] = AssemblePTE((void*)physAddr, flags);
 		_invlpg(virtualAddr);

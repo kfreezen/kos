@@ -3,7 +3,7 @@
 #include <print.h>
 #include <err.h>
 
-#define VFS_DEBUG
+//#define VFS_DEBUG
 
 VFS_Node* vfsRoot = NULL;
 UInt32 vfsId = 0;
@@ -251,12 +251,13 @@ int fgetline(File* file, char* buf, int maxlen, char end) {
 
 	/*kprintf("fgetline file.length=%x\n", FileSeek(SEEK_EOF, file));
 	FileSeek(base, file);*/
-	FileSeek(base, file);
 	
 	while(1) {
-		if(ReadFile(buf+readItr, 32, file)<32) {
+		int retRead = ReadFile(buf+readItr, 32, file);
+
+		if(retRead < 32) {
 			// encountered EOF, probably...
-			break;
+			return -1;
 		}
 
 		readItr += 32;
@@ -267,16 +268,14 @@ int fgetline(File* file, char* buf, int maxlen, char end) {
 			if(buf[i] == end) {
 				buf[i] = 0;
 				FileSeek(base+i+1, file);
-				return 0;
+				return readItr;
 			}
 		}
 
 		if(readItr >= maxlen) {
-			return 1;
+			return maxlen;
 		}
 	}
-
-	return -1;
 }
 
 int ReadFile(void* buf, int len, File* file) {

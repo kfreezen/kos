@@ -3,6 +3,7 @@
 #include <err.h>
 #include <vfs.h>
 
+// #define DRIVERS_DEBUG
 
 // This keeps track of where the driver space allocator is at.
 // The only problem with this approach is you could overrun when 0xB0000000
@@ -44,7 +45,9 @@ void KernelSymbolsLoad() {
 
 	FileSeek(0, file);
 	
+	#ifdef DRIVERS_DEBUG
 	kprintf("length=%d,%x\n", length, length);
+	#endif
 
 	void* buf = kalloc(length);
 
@@ -92,7 +95,9 @@ void* AllocateDriverSpace(int numPages) {
 	int pageBlocksToAllocate = numPages >> 5; // 32 pages in a page block, >> 5 = / 32.
 	int pagesToAllocate = numPages - (pageBlocksToAllocate << 5); // basically numPages % 32.
 
+	#ifdef DRIVERS_DEBUG
 	kprintf("pagesToAllocate=%d\n", pagesToAllocate);
+	#endif
 
 	int i;
 	for(i=0; i<pageBlocksToAllocate; i++) {

@@ -215,12 +215,13 @@ ELF* LoadKernelDriver(Pointer file) {
 
 	Elf32_Sym* symtab = NULL;
 	char* strtab = NULL;
+
 	char* shstrtab = NULL;
 
 	if(hdr->e_shstrndx != SHN_UNDEF) {
 		shstrtab = (file + sections[hdr->e_shstrndx].sh_offset);
 	}
-
+	
 	SectionInfo* sectionInfo = kalloc(sizeof(SectionInfo)*hdr->e_shnum);
 	memset(sectionInfo, 0, sizeof(SectionInfo)*hdr->e_shnum);
 
@@ -276,7 +277,11 @@ ELF* LoadKernelDriver(Pointer file) {
 		Elf32_Shdr* rel_hdr = (Elf32_Shdr*) ALItrNext(itr);
 		int rel_length = rel_hdr->sh_size / rel_hdr->sh_entsize; // Number of relocation entries.
 		Elf32_Rel* rel = (Elf32_Rel*) ((UInt32)file + rel_hdr->sh_offset);
+
+		// This is here because the compiler throws a warning (which is an error in our configuration).
+		#ifdef ELF_DEBUG
 		Elf32_Shdr* sectionToRelocate = &sections[rel_hdr->sh_info];
+		#endif
 
 		// Process the relocations
 
@@ -300,7 +305,10 @@ ELF* LoadKernelDriver(Pointer file) {
 					// We want to add sym->st_value to the value at relOffset, also relocate it to the address specified.
 					*relApplicationAddr = (Elf32_Word) (sym->st_value + *relApplicationAddr + relocationAddrDiff); // *relApplicationAddr is the implicit addend.
 
-					kprintf("Here we have _ %s, %x\n", &shstrtab[sectionInfo[sym->st_shndx].header->sh_name], *relApplicationAddr);
+					#ifdef ELF_DEBUG
+					kprintf("R_386_32 %s, %x\n", &shstrtab[sectionInfo[sym->st_shndx].header->sh_name], *relApplicationAddr);
+					#endif
+
 				} break;
 
 				case R_386_PC32: {
@@ -316,7 +324,7 @@ ELF* LoadKernelDriver(Pointer file) {
 							elf->start = 0;
 							elf->dir = NULL;
 							elf->error = UNDEFINED_SYMBOL;
-							kprintf("UNDEFINED_SYMBOL_ERROR\n");
+							kprintf("UNDEFINED_SYMBOL_ERROR %s\n", &strtab[symtab[relSym].st_name]);
 							return elf;
 						} else {
 							externalSymbol = 1;
@@ -354,8 +362,8 @@ ELF* LoadKernelDriver(Pointer file) {
 
 	// Clean up the stuff related to the relocation.
 	ALFreeItr(itr);
-	ALFreeList(relSections);
-	ALFreeList(relaSections);
+	//ALFreeList(relSections);
+	//ALFreeList(relaSections);
 
 	relSections = NULL;
 	relaSections = NULL;

@@ -16,7 +16,7 @@ sudo cp init.script /media/loop0/init.script
 
 make drivers
 sudo mkdir /media/loop0/drivers
-sudo cp drv_src/*.ko /media/loop0/drivers/
+sudo cp drivers/*.ko /media/loop0/drivers/
 
 sleep 0.25s
 sudo umount /media/loop0

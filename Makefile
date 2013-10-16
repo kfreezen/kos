@@ -1,7 +1,7 @@
 C_SRC:=$(shell find src -mindepth 1 -maxdepth 3 -name "*.c")
 S_SRC:=$(shell find src -mindepth 1 -maxdepth 3 -name "*.s")
 T_SRC:=$(shell find src -mindepth 1 -maxdepth 3 -name "*.t.c")
-DRV_SRC:=$(shell find drv_src -mindepth 1 -maxdepth 3 -name "*.c")
+DRV_SRC:=$(shell find drivers -mindepth 1 -maxdepth 3 -name "*.c")
 
 HDR:=$(shell find include -mindepth 1 -maxdepth 3 -name "*.h")
 T_HDR:=$(shell find . -mindepth 1 -maxdepth 3 -name "*.t.h");
@@ -13,7 +13,8 @@ DRV_SOURCES:=$(patsubst %.c, %.ko, $(DRV_SRC))
 SOURCES:=$(S_SOURCES) $(C_SOURCES)
 
 CC:=@gcc
-CFLAGS:=-I include -m32 -nostdlib -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -Wall -Werror
+CFLAGS:=-I include -m32 -nostdlib -fno-builtin -fno-stack-protector -nostartfiles -nodefaultlibs -Wall
+DRIVER_CFLAGS:=$(CFLAGS) -fno-asynchronous-unwind-tables
 AS:=@nasm
 ASFLAGS:=-felf32
 LD:=@ld
@@ -27,7 +28,7 @@ link:
 drivers:  $(DRV_SOURCES)
 
 %.ko:  %.c
-	$(CC) $(CFLAGS) -r -o $@ $<
+	$(CC) $(DRIVER_CFLAGS) -r -o $@ $<
 	
 clean:
 	-@rm $(SOURCES) kernel

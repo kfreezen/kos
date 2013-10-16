@@ -158,59 +158,51 @@ static void kb_callback(Registers regs) {
 	}
 
 	outb(0x20, 0x20);
-	asm("sti");
-	while(kb_stall) {
-
-	}
 }
 
 #define KEYBOARD_DEV_NAME "keyboard"
 
-void KB_Init(int ne) {
-	wait_press = 1;
-	
-	
-	FAT12_Context* context = FAT12_GetContext(FloppyGetDevice());	
-	FAT12_File* file = FAT12_GetFile(context, "kbmaps.dat");
-	
-	int size = file->locationData->fileSize;
-	if(size&0x1ff) {
-		size = size&(~0x1FF);
-		size+=0x200;
+int KB_Init() {
+	File* file = GetFileFromPath("/sys/kbmaps.dat");
+
+	if(!file) {
+		return -1;
 	}
-	
-	
-	FileBuffer buffer = FAT12_Read_FB(file, 0, 0);
-	UInt8* buf = buffer.buffer;
-	
-	// Read in kbmaps.
+
+	int length = FileSeek(SEEK_EOF, file);
+	FileSeek(0, file);
+
+	UInt8* buf = kalloc(length);
+	ReadFile(buf, length, file);
 	KB_Map* kbmaps = (KB_Map*) buf;
-	int num = file->locationData->fileSize/sizeof(KB_Map);
+	
+	int num = length / sizeof(KB_Map);
+
 	#ifdef KEYBOARD_DEBUG
 	kprintf("num = %x, fileSize=%x\n", num, file->locationData->fileSize);
 	#endif
 
 	maps = kalloc(sizeof(KB_Map)*num);
-	
+
 	nummaps = num;
-	if(file->locationData->fileSize%sizeof(KB_Map)) {
-		kprintf("kbmaps.dat invalid.\n");
-		return;
+	if(length%sizeof(KB_Map)) {
+		kprintf("kbmaps.dat invalid");
+		return -1;
 	} else {
 		int i;
 		for(i=0; i<num; i++) {
 			memcpy(&maps[i], &kbmaps[i], sizeof(KB_Map));
 		}
 	}
-	
+
 	active_maps[0] = 0;
 	active_maps[1] = 1;
 	curmap = 0;
-	
-	// Basics are now working.
-	noecho = ne;
-	
+
+	noecho = 0;
+
 	kfree(buf);
+
 	KB_Buffer = kalloc(512);
 	memset(KB_Buffer, 0, 512);
 	
@@ -231,4 +223,15 @@ void KB_Init(int ne) {
 	#endif
 
 	RegisterDevice(&kb_device);
+
+	return 0;
+}
+
+void _start() {
+	kprintf("Keyboard init ");
+	if(KB_Init() == 0) {
+		kprintf("[ok]\n");
+	} else {
+		kprintf("[fail]\n");
+	}
 }

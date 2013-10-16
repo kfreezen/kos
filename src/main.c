@@ -54,6 +54,8 @@ void thread1();
 void thread2();
 void thread(char c);
 
+#define INIT_DEBUG
+
 int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	initial_esp = initial_stack;
 	
@@ -99,9 +101,9 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	ATA_Init();
 	//ATA_EnumerateDevices();
 
-	kprintf("Keyboard Init... ");
+	/*kprintf("Keyboard Init... ");
 	KB_Init(0);
-	kprintf("[ok]\n");
+	kprintf("[ok]\n");*/
 
 	FAT12_Init(FAT12_GetContext(FloppyGetDevice()), "/", "sys");
 	
@@ -117,22 +119,30 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	File* initScript = GetFileFromPath("/sys/init.script");
 	FileSeek(0, initScript); // Due to these being global objects, we have to do such ugly things as this.
 
+	#ifdef INIT_DEBUG
+	kprintf("initScript=%x\n", initScript);
+	#endif
+
 	char* lineBuf = kalloc(256);
 	int doBreak = 0;
-	while(1) {
-		kprintf("is=%x\n", initScript);
+	while(!doBreak) {
 		if(fgetline(initScript, lineBuf, 256, '\n')==-1) {
-			doBreak = 1;
+			if(strlen(lineBuf) > 0) {
+				doBreak = 1;
+			} else {
+				break; // We've processed everything that needs to be processed.
+			}
 		}
 
 		// Now parse it.
 		char* tok = strtok(lineBuf, " ");
 		kprintf("%s, %x\n", tok,tok);
 		if(!strcmp(tok, "load_driver")) {
+			#ifdef INIT_DEBUG
 			kprintf("load_driver ");
+			#endif
 
 			tok = strtok(NULL, " ");
-			kprintf("%s\n", tok);
 
 			// Load the driver specified.
 			File* drv = GetFileFromPath(tok);
@@ -140,22 +150,28 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 				int drvLength = FileSeek(SEEK_EOF, drv);
 				FileSeek(0, drv);
 				void* drvBuf = kalloc(drvLength);
+
+				#ifdef INIT_DEBUG
 				kprintf("%s\n", GetNodeFromFile(drv)->name);
-				/*ReadFile(drvBuf, drvLength, drv);
+				#endif
+
+				ReadFile(drvBuf, drvLength, drv);
 				ELF* elf = LoadKernelDriver(drvBuf);
+
+				#ifdef INIT_DEBUG
 				kprintf("elf->start=%x\n", elf->start);
-				void (*driverInit)() = (void (*)()) elf->start;
-				driverInit();*/
+				#endif
+
+				if(elf->error == 0) {
+					void (*driverInit)() = (void (*)()) elf->start;
+					driverInit();
+				}
 
 				kfree(drvBuf);
 				drvBuf = NULL;
 
 				CloseFile(drv);
 			}
-		}
-
-		if(doBreak) {
-			break;
 		}
 	}
 
