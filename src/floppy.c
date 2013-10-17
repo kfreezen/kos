@@ -288,45 +288,56 @@ inline void FDC_WaitIRQ() {
 	receivedIrq = FALSE;
 }
 
+UInt32 waitTillTicksEquals = 0;
+UInt32 FDC_DisableMotorWait(UInt32 ticks, UInt32 mstime) {
+	if(ticks >= waitTillTicksEquals) {
+		UInt32 motor = 0;
+
+		//! select the correct mask based on current drive
+		switch (currentDrive) {
+
+			case 0:
+				motor = DOR_MASK_DRIVE0_MOTOR;
+				break;
+			case 1:
+				motor = DOR_MASK_DRIVE1_MOTOR;
+				break;
+			case 2:
+				motor = DOR_MASK_DRIVE2_MOTOR;
+				break;
+			case 3:
+				motor = DOR_MASK_DRIVE3_MOTOR;
+				break;
+		}
+
+		// Deactivate our floppy motor, since it's timed out.
+		outb(DIGITAL_OUTPUT_REGISTER, (currentDrive | motor | DOR_MASK_RESET | DOR_MASK_DMA));
+		waitTillTicksEquals = 0;
+		DeactivatePITHook(); // This unregisters this function, so it will no longer be called.
+	}
+
+	return 0;
+}
+
+// So drive is completely irrelevant to this function?
 void FDC_ControlMotor(UInt32 drive, Bool toggle) {
 	
 	//! sanity check: invalid drive
 	if (drive > 3)
 		return;
 
-	UInt32 motor = 0;
-
-	//! select the correct mask based on current drive
-	switch (currentDrive) {
-
-		case 0:
-			motor = DOR_MASK_DRIVE0_MOTOR;
-			break;
-		case 1:
-			motor = DOR_MASK_DRIVE1_MOTOR;
-			break;
-		case 2:
-			motor = DOR_MASK_DRIVE2_MOTOR;
-			break;
-		case 3:
-			motor = DOR_MASK_DRIVE3_MOTOR;
-			break;
-	}
-
 	//! turn on or off the motor of that drive
 	if (toggle) {
-		outb(DIGITAL_OUTPUT_REGISTER, (currentDrive | motor | DOR_MASK_RESET | DOR_MASK_DMA));
-		
-		if(!floppy_ticks_motor_disable) {
-			floppy_ticks_motor_disable = 0;
-			
-			wait (20);
-		} else {
-			//floppy_ticks_motor_disable = 0;
-			
-		}
-	} else {
+		waitTillTicksEquals = GetTicks() + 20;
+		InitPITHook(FDC_DisableMotorWait);
+	} else if(waitTillTicksEquals == 0) {
+		// If waitTillTicksEquals == 0, then our motor needs to be turned off.
 		outb(DIGITAL_OUTPUT_REGISTER, DOR_MASK_RESET);
+	} else if(waitTillTicksEquals > 0) {
+		asm("cli");
+		DeactivatePITHook(); // We don't want the kernel interrupting right before we deactivate the hook and
+		// turning off the motor.
+		asm("sti");
 	}
 	
 }

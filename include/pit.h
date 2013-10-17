@@ -11,7 +11,7 @@ void wait(int ticks);
 void EnableLoadIndicator(char c, UInt32 interval);
 void DisableLoadIndicator();
 
-typedef UInt32 (*PITHook)(UInt32, UInt32);
+typedef UInt32 (*PITHook)(UInt32 numTick, UInt32 timeMS);
 
 void InitPITHook(PITHook h);
 void DeactivatePITHook();

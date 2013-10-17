@@ -1,2 +1,1 @@
-load_driver /sys/drivers/helloworld.ko
 load_driver /sys/drivers/keyboard.ko

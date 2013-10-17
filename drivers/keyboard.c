@@ -163,6 +163,8 @@ static void kb_callback(Registers regs) {
 #define KEYBOARD_DEV_NAME "keyboard"
 
 int KB_Init() {
+	kprintf("ss %x\n", shift_state);
+
 	File* file = GetFileFromPath("/sys/kbmaps.dat");
 
 	if(!file) {
@@ -224,6 +226,7 @@ int KB_Init() {
 
 	RegisterDevice(&kb_device);
 
+	kfree(kb_device.name);
 	return 0;
 }
 

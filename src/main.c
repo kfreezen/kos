@@ -54,7 +54,7 @@ void thread1();
 void thread2();
 void thread(char c);
 
-#define INIT_DEBUG
+//#define INIT_DEBUG
 
 int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	initial_esp = initial_stack;

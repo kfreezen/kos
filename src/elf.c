@@ -4,7 +4,7 @@
 #include <tasking.h>
 #include <drivers.h>
 
-#define ELF_DEBUG
+//#define ELF_DEBUG
 
 extern PageDirectory* currentPageDir;
 
@@ -239,6 +239,9 @@ ELF* LoadKernelDriver(Pointer file) {
 			kprintf("sectionInfo[%d].addr=%x, str=%s\n", i, sectionInfo[i].addr, shstrtab[sectionInfo[i].header->sh_name]);
 			#endif
 
+			// Probably not completely necessary, but it is for BSS, and I don't feel like doing anything different
+			// right now.
+			memset(sectionInfo[i].addr, 0, sections[i].sh_size);
 			memcpy(sectionInfo[i].addr, (file+sections[i].sh_offset), sections[i].sh_size);
 		}
 
@@ -269,8 +272,33 @@ ELF* LoadKernelDriver(Pointer file) {
 				//strtabSection = &sections[i];
 				strtab = (sections[i].sh_offset + file);
 			} break;
+
 		}
 	}
+
+	// Go through the symtab and tally up everything that belongs to the common section.
+	UInt32 commonSectionSize = 0;
+	int iSymtab = 0;
+	for(iSymtab = 0; iSymtab < symtabSection->sh_size / symtabSection->sh_entsize; iSymtab++) {
+		if(symtab[iSymtab].st_shndx == SHN_COMMON) {
+			if(commonSectionSize % (UInt32) symtab[iSymtab].st_value) {
+				if(commonSectionSize > 0) {
+					commonSectionSize = commonSectionSize / (UInt32) symtab[iSymtab].st_value;
+					commonSectionSize = commonSectionSize * (UInt32) symtab[iSymtab].st_value + (UInt32) symtab[iSymtab].st_value;
+				}
+
+			}
+
+			Elf32_Addr value = (Elf32_Addr) commonSectionSize;
+
+			commonSectionSize += symtab[iSymtab].st_size;
+			symtab[iSymtab].st_value = value;
+
+		}
+	}
+
+	void* commonSectionAddr = AllocateDriverSpace(commonSectionSize / PAGE_SIZE + 1);
+	memset(commonSectionAddr, 0, commonSectionSize);
 
 	ALIterator* itr = ALGetItr(relSections);
 	while(ALItrHasNext(itr)) {
@@ -282,8 +310,6 @@ ELF* LoadKernelDriver(Pointer file) {
 		#ifdef ELF_DEBUG
 		Elf32_Shdr* sectionToRelocate = &sections[rel_hdr->sh_info];
 		#endif
-
-		// Process the relocations
 
 		int i;
 		for(i=0; i<rel_length; i++) {
@@ -297,16 +323,32 @@ ELF* LoadKernelDriver(Pointer file) {
 					int relSym = ELF32_R_SYM(rel[i].r_info);
 					Elf32_Sym* sym = &symtab[relSym];
 					//Elf32_Shdr* shdr = &sections[sym->st_shndx];
-					// Find the address that the relocation should be applied to
-					UInt32 relocationAddrDiff = (sectionInfo[sym->st_shndx].addr - sectionInfo[rel_hdr->sh_info].header->sh_addr);
+
+					UInt32 relocationAddrDiff;
+
+					if(sym->st_shndx == SHN_COMMON) {
+						relocationAddrDiff = ((UInt32) commonSectionAddr); // We changed st_value to the new 
+						// value calculated in the iSymtab for loop above.
+					} else {
+						// Find the address that the relocation should be applied to
+						relocationAddrDiff = (sectionInfo[sym->st_shndx].addr - sectionInfo[rel_hdr->sh_info].header->sh_addr);
+					}
 
 					Elf32_Word* relApplicationAddr = (Elf32_Word*) (sectionInfo[rel_hdr->sh_info].addr + relOffset);
+
+					#ifdef ELF_DEBUG
+					kprintf("relAddr = %x\n", relApplicationAddr);
+					#endif
 
 					// We want to add sym->st_value to the value at relOffset, also relocate it to the address specified.
 					*relApplicationAddr = (Elf32_Word) (sym->st_value + *relApplicationAddr + relocationAddrDiff); // *relApplicationAddr is the implicit addend.
 
 					#ifdef ELF_DEBUG
-					kprintf("R_386_32 %s, %x\n", &shstrtab[sectionInfo[sym->st_shndx].header->sh_name], *relApplicationAddr);
+					if(sym->st_shndx != SHN_COMMON) {
+						kprintf("R_386_32 %s, %x\n", &shstrtab[sectionInfo[sym->st_shndx].header->sh_name], *relApplicationAddr);
+					} else {
+						kprintf("R_386_32 %s, %x\n", ".common", *relApplicationAddr);
+					}
 					#endif
 
 				} break;

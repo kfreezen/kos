@@ -139,6 +139,7 @@ static void kb_callback(Registers regs) {
 	if(!(scan_code&0x80)) {
 		switch(scan_code) {
 			case LEFT_SHIFT_SCANCODE:
+				kprintf("shift_state = 1\n");
 				shift_state = 1;
 				break;
 				
@@ -166,9 +167,9 @@ static void kb_callback(Registers regs) {
 
 #define KEYBOARD_DEV_NAME "keyboard"
 
-void KB_Init(int ne) {
+int KB_Init() {
 	wait_press = 1;
-	
+	int ne = 0;
 	
 	FAT12_Context* context = FAT12_GetContext(FloppyGetDevice());	
 	FAT12_File* file = FAT12_GetFile(context, "kbmaps.dat");
@@ -195,7 +196,7 @@ void KB_Init(int ne) {
 	nummaps = num;
 	if(file->locationData->fileSize%sizeof(KB_Map)) {
 		kprintf("kbmaps.dat invalid.\n");
-		return;
+		return -1;
 	} else {
 		int i;
 		for(i=0; i<num; i++) {
@@ -231,4 +232,6 @@ void KB_Init(int ne) {
 	#endif
 
 	RegisterDevice(&kb_device);
+
+	return 0;
 }
