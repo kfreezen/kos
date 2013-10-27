@@ -6,6 +6,77 @@
 
 extern void ClearScreen();
 
+UInt64 __udivmoddi4(UInt64 num, UInt64 den, UInt64* rem_p) {
+	UInt64 quot = 0, qbit = 1;
+
+	if(den == 0) {
+		asm volatile("int $0");
+		return 0;
+	}
+
+	while((Int64) den >= 0) {
+		den <<= 1;
+		qbit <<= 1;
+	}
+
+	while(qbit) {
+		if(den <= num) {
+			num -= den;
+			quot += qbit;
+		}
+		den >>= 1;
+		qbit >>= 1;
+	}
+
+	if(rem_p) {
+		*rem_p = num;
+	}
+
+	return quot;
+}
+
+Int64 __divdi3(Int64 num, Int64 den) {
+	int minus = 0;
+	Int64 v;
+	if(num < 0) {
+		num = -num;
+		minus = 1;
+	}
+
+	if(den < 0) {
+		den = -den;
+		minus ^= 1;
+	}
+
+	v = __udivmoddi4(num, den, NULL);
+	if(minus) {
+		v = -v;
+	}
+
+	return v;
+}
+
+Int64 __moddi3(Int64 num, Int64 den) {
+	int minus = 0;
+	Int64 v;
+	if(num < 0) {
+		num = -num;
+		minus = 1;
+	}
+
+	if(den < 0) {
+		den = -den;
+		minus ^= 1;
+	}
+
+	__udivmoddi4(num, den, (UInt64*) &v);
+	if(minus) {
+		v = -v;
+	}
+
+	return v;
+}
+
 File* printStream = NULL;
 
 void SetPrintStream(File* stream) {
@@ -98,8 +169,52 @@ void PutHexEx(UInt32 num, Bool noZeroes, Bool hexIdent) {
 	MoveCursorToCurrentCoordinates();
 }
 
+#define UINT32_MAXVAL 0xFFFFFFFF
+
+void PutHex64(UInt64 num) {
+	UInt32 tmp = num & UINT32_MAXVAL;
+	UInt32 tmp2 = num >> 32;
+	tmp &= UINT32_MAXVAL;
+	PutHexEx(tmp2, true, true);
+	PutHexEx(tmp, true, false);
+
+}
+
 void PutHex(UInt32 num) {
 	PutHexEx(num, true, true);
+}
+
+void PutDec64(Int64 num) {
+	if(num == 0) {
+		PutChar('0');
+		return;
+	}
+
+	if(num < 0) {
+		num = -num;
+		_PrintChar('-');
+	}
+
+	Int64 acc = num;
+	Char c[64];
+	int i = 0;
+	while(acc>0) {
+		c[i] = '0' + acc % 10;
+		acc /= 10;
+		i++;
+	}
+
+	c[i] = 0;
+
+	Char c2[64];
+	c2[i--] = 0;
+	int j = 0;
+	while(i >= 0) {
+		c2[i--] = c[j++];
+	}
+
+	_PrintString(c2);
+	MoveCursorToCurrentCoordinates();
 }
 
 void PutDec(int num) {
@@ -146,13 +261,24 @@ void kprintf(const char* fmt, ...) {
 	va_list va;
 	va_start(va, fmt);
 	
+	int longStatus = 0; // Indicates that the long version of PutDec or PutHex should be called.
+	int size = 0;
+
 	int i;
 	for(i=0; fmt[i]!='\0';) {
 		switch(fmt[i]) {
 			case '%': 
 				{
 					
+					formatSwitch: // I don't like this, but it's the easiest
+					// way I could come up with in this switch
+
 					switch(fmt[++i]) {
+						case 'l':
+							longStatus = 1;
+							goto formatSwitch;
+							break;
+
 						case '%':
 							_PrintChar('%');
 							i++;
@@ -175,16 +301,32 @@ void kprintf(const char* fmt, ...) {
 							
 						case 'd':
 						case 'u': {
-							UInt32 u = va_arg(va, UInt32);
-							PutDec(u);
+							if(longStatus) {
+								UInt64 u = va_arg(va, UInt64);
+
+								PutDec64(u);
+							} else {
+								UInt32 u = va_arg(va, UInt32);
+
+								PutDec(u);
+							}
+
+							longStatus = 0;
 							i++;
 							break;
 							
 						}
 						
 						case 'x': {
-							UInt32 x = va_arg(va, UInt32);
-							PutHex(x);
+							if(longStatus) {
+								UInt64 x = va_arg(va, UInt64);
+
+								PutHex64(x);
+							} else {
+								UInt32 x = va_arg(va, UInt32);
+								PutHex(x);
+							}
+							longStatus = 0;
 							i++;
 							break;
 						}

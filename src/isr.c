@@ -272,7 +272,7 @@ int ISR_Init() {
 	registerIntHandler(IRQ(7), null_irq7_handler);
 	
 	registerIntHandler(71, driver_interface_handler);
-	
+
 	registerSyscall(SYSCALL_EXIT, syscall_exit);
 	registerSyscall(SYSCALL_CONSOLE, syscall_console);
 	registerSyscall(SYSCALL_TASK, syscall_task);

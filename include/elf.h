@@ -82,15 +82,29 @@ struct Elf32_Rela {
 typedef struct Elf32_Rela Elf32_Rela;
 
 typedef struct {
+	Elf32_Shdr* header;
+	void* addr; // The address that the header needs to be relocated to.
+} SectionInfo;
+
+typedef struct {
 	int error;
 	Pointer start;
 	PageDirectory* dir;
+
+	SectionInfo* sectionInfo;
+
+	Elf32_Sym* symtab;
+	int symtabLength;
+
+	char* strtab;
 } ELF;
 
 ELF* Parse_ELF(Pointer executable); // error is nonzero if the executable type is not supported.  It can have different values as it tells us what went wrong also.
 int CreateTaskFromELF(ELF* elf);
 
 ELF* LoadKernelDriver(Pointer file);
+void* getSymbol(ELF* elf, const char* symName);
+
 // Various defines to make our life easier
 #define EI_MAG0 0
 #define EI_MAG1 1
@@ -289,6 +303,8 @@ R_386_GOTPC This relocation type resembles R_386_PC32, except it uses the addres
 	editor to build the global offset table.
 
 **/
+
+#define ERR_SYM_NOT_FOUND (ERR_DEFINED_ELSEWHERE_BOTTOM + 0)
 
 char** GetElfErrors();
 #endif

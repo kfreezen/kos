@@ -17,6 +17,8 @@
 typedef char Char;
 typedef Char* String;
 
+typedef long long Int64;
+
 typedef int Bool;
 typedef int size_t;
 typedef int Int32;

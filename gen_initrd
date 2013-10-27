@@ -1,0 +1,7 @@
+#!/bin/bash
+
+mkdir initrd-tmp
+cp drivers/*.ko initrd-tmp/
+cp kernel.map initrd-tmp/
+
+./make-initrd `ls drivers/*.ko`

@@ -166,6 +166,13 @@ bswap16:
 	xchg al, ah
 	ret
 	
+[global getFlags]
+
+getFlags:
+	pushf
+	pop eax
+	ret
+
 [section .data]
 [global int_handlers]
 [extern genericHandler]

@@ -2,6 +2,7 @@
 #include <paging.h>
 #include <kheap.h>
 #include <print.h>
+#include <isr.h>
 
 //#define TASKING_DEBUG
 
@@ -17,8 +18,15 @@ UInt32 next_pid = 1;
 
 extern UInt32 new_task_entry; // Not to be referenced as such.  Is a symbol in _idt.s
 
+extern void idleProcess();
+
+void thread_switch(Registers* regs) {
+	TaskSwitch();
+}
+
+extern UInt32 getFlags();
+
 void InitTasking() {
-	// This assumes that the stack has been moved to 0xEFFFFFF0 with 2 pages worth of stack space.
 	
 	asm volatile("cli");
 	
@@ -30,9 +38,34 @@ void InitTasking() {
 	current_task->next = 0;
 	
 	asm volatile("sti");
+
+	// Setting up our idle task.
+	current_task->next->next = (Task*) kalloc(sizeof(Task));
+	current_task->next->eip = (UInt32) idleProcess;
+	current_task->next->esp = (UInt32) kalloc(256) + 252;
+	current_task->next->ebp = current_task->esp;
+	current_task->next->dir = currentPageDir;
+	current_task->next->next = 0;
+	current_task->next->id = next_pid++;
+
+	// We need to set up the idle process's stack as if returning from an interrupt.
+	setupStack(current_task->next->esp);
+
+	registerIntHandler(72, thread_switch);
 }
 
 extern void TaskSwitch();
+
+extern int mstime;
+void TaskSleep(int ms) {
+	TaskSleepTicks(ms / mstime);
+}
+
+void TaskSleepTicks(int ticks) {
+	current_task->sleepTill = GetTicks() + ticks;
+
+	ThreadYield();
+}
 
 #if 0
 void TaskSwitch() {

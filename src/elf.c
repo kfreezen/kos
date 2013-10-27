@@ -3,6 +3,7 @@
 #include <paging.h>
 #include <tasking.h>
 #include <drivers.h>
+#include <err.h>
 
 //#define ELF_DEBUG
 
@@ -147,11 +148,6 @@ typedef struct {
 	// from sh_idx, and length can derived from sectionHeader.
 } ProgBitsInfo;
 
-typedef struct {
-	Elf32_Shdr* header;
-	void* addr; // The address that the header needs to be relocated to.
-} SectionInfo;
-
 // WARNING:  THIS FUNCTION HAS UGLY CODE!!! DO NOT ENTER IF YOU VALUE YOUR SANITY!
 ELF* LoadKernelDriver(Pointer file) {
 	Elf32_Ehdr* hdr = (Elf32_Ehdr*) file;
@@ -236,13 +232,17 @@ ELF* LoadKernelDriver(Pointer file) {
 			}
 
 			#ifdef ELF_DEBUG
-			kprintf("sectionInfo[%d].addr=%x, str=%s\n", i, sectionInfo[i].addr, shstrtab[sectionInfo[i].header->sh_name]);
+			kprintf("sectionInfo[%d].addr=%x, str=%s\n", i, sectionInfo[i].addr, &shstrtab[sectionInfo[i].header->sh_name]);
 			#endif
 
 			// Probably not completely necessary, but it is for BSS, and I don't feel like doing anything different
 			// right now.
-			memset(sectionInfo[i].addr, 0, sections[i].sh_size);
-			memcpy(sectionInfo[i].addr, (file+sections[i].sh_offset), sections[i].sh_size);
+
+			if(!strcmp(&shstrtab[sectionInfo[i].header->sh_name], ".bss")) {
+				memset(sectionInfo[i].addr, 0, sections[i].sh_size);
+			} else {
+				memcpy(sectionInfo[i].addr, (file+sections[i].sh_offset), sections[i].sh_size);
+			}
 		}
 
 		switch(sections[i].sh_type) {
@@ -270,7 +270,8 @@ ELF* LoadKernelDriver(Pointer file) {
 					break; // We are breaking from the switch, not the "for" loop.
 				}
 				//strtabSection = &sections[i];
-				strtab = (sections[i].sh_offset + file);
+				strtab = kalloc(sections[i].sh_size);
+				memcpy(strtab, (sections[i].sh_offset + file), sections[i].sh_size);
 			} break;
 
 		}
@@ -413,6 +414,13 @@ ELF* LoadKernelDriver(Pointer file) {
 	elf->start = hdr->e_entry;
 	elf->dir = NULL;
 	elf->error = 0;
+	
+	elf->symtab = kalloc(symtabSection->sh_size);
+	memcpy(elf->symtab, symtab, symtabSection->sh_size);
+
+	elf->symtabLength = symtabSection->sh_size / symtabSection->sh_entsize;
+
+	elf->sectionInfo = sectionInfo;
 
 	// Loop through our symbol table looking for a symbol which is linked to "_start"
 
@@ -431,13 +439,34 @@ ELF* LoadKernelDriver(Pointer file) {
 		kprintf("strtab==NULL\n");
 	}
 
-	// XXX:  I'm sure there are some other kallocs that don't have matching kfrees
-	// CLEANUP
-	kfree(sectionInfo);
-	// END CLEANUP
+	// Remember, we don't kfree the sectionInfo array because it's going to be used elsewhere.
 
 	kprintf("%x, %x, %x\n", elf->start, elf->dir, elf->error);
 	return elf;
+}
+
+void* getSymbol(ELF* elf, const char* symName) {
+	if(!elf) {
+		SetErr(ERR_INVALID_ARG);
+		return NULL;
+	}
+
+	if(!elf->symtab || !elf->strtab || !elf->sectionInfo) {
+		SetErr(ERR_NULL_VALUE_ENCOUNTERED);
+		return NULL;
+	}
+
+	int i;
+	for(i=0; i<elf->symtabLength; i++) {
+		if(elf->symtab[i].st_shndx == SHN_COMMON || elf->symtab[i].st_shndx == SHN_UNDEF) {
+			continue;
+		} else if(!strcmp(symName, &elf->strtab[elf->symtab[i].st_name])) {
+			return (void*) ((void*) elf->sectionInfo[elf->symtab[i].st_shndx].addr + (unsigned)elf->symtab[i].st_value);
+		}
+	}
+
+	SetErr(ERR_SYM_NOT_FOUND);
+	return NULL;
 }
 
 char* elfErrors[] = {

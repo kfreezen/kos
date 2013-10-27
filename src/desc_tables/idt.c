@@ -1,4 +1,5 @@
 #include <idt.h>
+#include <pic.h>
 
 IdtDescriptor idt_desc;
 IdtEntry idt[256];
@@ -6,19 +7,10 @@ IdtEntry idt[256];
 extern void idt_flush(UInt32 ptr);
 
 int IDT_Init() {
+	PIC_Remap();
+	
 	idt_desc.limit = (sizeof(IdtEntry)*256)-1;
 	idt_desc.base = (UInt32)idt;
-	
-	outb(0x20, 0x11);
-	outb(0xA0, 0x11);
-	outb(0x21, 0x20);
-	outb(0xA1, 0x28);
-	outb(0x21, 0x04);
-	outb(0xA1, 0x02);
-	outb(0x21, 0x01);
-	outb(0xA1, 0x01);
-	outb(0x21, 0x0);
-	outb(0xA1, 0x0);
 	
 	idt[0 ] = FillIdtEntry(0x08, (UInt32)&isr0 , 0x8E);
 	idt[1 ] = FillIdtEntry(0x08, (UInt32)&isr1 , 0x8E);
@@ -75,7 +67,7 @@ int IDT_Init() {
 	idt[47] = FillIdtEntry(0x08, (UInt32)&irq15, 0x8e);
 	idt[70] = FillIdtEntry(0x08, (UInt32)&sys70, 0x8e);
 	idt[71] = FillIdtEntry(0x08, (UInt32)&isr71, 0x8e);
-	
+	idt[72] = FillIdtEntry(0x08, (UInt32)&isr72, 0x8e);
 	idt_flush((UInt32)&idt_desc);
 	
 	return 0;

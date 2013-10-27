@@ -2,6 +2,8 @@
 [global TaskStackSetup]
 [extern kprintf]
 
+%define SLEEP_TICKS 24
+
 TaskStackSetup:
 	mov eax, [esp+4]
 	mov ecx, [esp+8]
@@ -23,8 +25,16 @@ dotaskswitch:
 [global DefaultTaskThread]
 
 DefaultTaskThread:
+	hlt
 	jmp DefaultTaskThread
-	
+
+[global idleProcess]
+
+; How do you like taking a page from the Microsoft book?
+idleProcess:
+	hlt
+	jmp idleProcess
+
 [global read_eip]
 
 read_eip:
@@ -38,6 +48,7 @@ process_start_stub:
 [global TaskSwitch]
 [extern current_task]
 [extern ready_queue]
+[extern tick]
 
 TaskSwitch:
 	push ebp
@@ -47,6 +58,7 @@ TaskSwitch:
 	
 	mov ebx, [current_task]
 	
+.doNext:
 	; Save pointers
 	mov [ebx+4], esp
 	mov [ebx+8], ebp
@@ -71,15 +83,12 @@ TaskSwitch:
 		mov [current_task], ebx
 	.end_curtaskisnull:
 	
-	;mov ecx, 70000000
-	;._loop_delay:
-	;	dec ecx
-	;	jecxz ._loop_delay_done
-	;	jmp ._loop_delay
-	;._loop_delay_done:
-	
-	mov ebx, [current_task]
-	
+	mov ecx, [tick]
+	mov eax, [ebx+SLEEP_TICKS]
+	cmp ecx, eax
+	jb .doNext
+
+.doSwitch:
 	; TODO Figure out how to create a struct in nasm assembly code.
 	cli
 	mov eax, [ebx+16] ; pageDirectory
@@ -103,4 +112,3 @@ TaskSwitch:
 [global default_stack]
 
 default_stack dd 256
-

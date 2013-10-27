@@ -19,6 +19,22 @@ UInt32 pciConfigReadLong(UInt16 bus, UInt16 slot, UInt16 func, UInt16 offset) {
 	return inl(PCI_CONFIG_DATA);
 }
 
+UInt16 pciConfigReadWord(UInt16 bus, UInt16 slot, UInt16 func, UInt16 offset) {
+	UInt32 address;
+	UInt32 lbus = (UInt32) bus;
+	UInt32 lslot = (UInt32) slot;
+	UInt32 lfunc = (UInt32) func;
+	UInt16 tmp = 0;
+
+	address = (UInt32)((lbus << 16) | (lslot << 11) |
+		(lfunc << 8) | (offset & 0xFC) | ((UInt32)0x80000000));
+
+	outl(PCI_CONFIG_ADDR, address);
+
+	tmp = (UInt16)((inl(PCI_CONFIG_DATA) >> ((offset & 2) * 8)) & 0xFFFF);
+	return tmp;
+}
+
 void pciConfigWriteLong(UInt16 bus, UInt16 slot, UInt16 func, UInt16 offset, UInt32 write) {
 	UInt32 address;
 	UInt32 lbus = (UInt32)bus&0xFF;
@@ -40,7 +56,7 @@ UInt32 PCI_ReadConfigLong(PCIDevice* device, int func, int config_offset) {
 }
 
 inline UInt16 getVendorID(UInt16 bus, UInt16 slot, UInt16 function) {
-	return pciConfigReadLong(bus, slot, function, 0)&0xFFFF;
+	return pciConfigReadWord(bus, slot, function, 0)&0xFFFF;
 }
 
 inline UInt16 getHeaderType(UInt16 bus, UInt16 slot, UInt16 function ) {
@@ -69,6 +85,8 @@ void AddPCIDevice(UInt8 bus, UInt8 device, UInt8* functions, UInt8 functionsNum)
 	}
 	
 	PCIDevice* dev = (PCIDevice*) kalloc(sizeof(PCIDevice));
+	memset(dev, 0, sizeof(PCIDevice));
+
 	dev->bus = bus;
 	dev->device = device;
 	dev->functionsNum = functionsNum;
@@ -123,7 +141,7 @@ void checkFunction(UInt8 bus, UInt8 device, UInt8 function) {
 void checkDevice(UInt8 bus, UInt8 device) {
 	UInt8 function = 0;
 	
-	UInt8 vendorID = getVendorID(bus, device, function);
+	UInt16 vendorID = getVendorID(bus, device, function);
 	if(vendorID==0xFFFF) {
 		return;
 	}
@@ -132,16 +150,21 @@ void checkDevice(UInt8 bus, UInt8 device) {
 	UInt8 headerType = getHeaderType(bus, device, function);
 	UInt8 availFunctions[8];
 	int functions = 1;
+
 	if(headerType&PCI_MULTIFUNCTION) {
+
 		availFunctions[0] = 1;
 		
 		for(function = 1; function < 8; function++) {
+			//kprintf("vid[%x] = %x\n", function, getVendorID(bus, device, function));
+
 			if(getVendorID(bus, device, function)==0xFFFF) {
 				availFunctions[function] = 0;
 			} else {
 				availFunctions[function] = 1;
 				functions++;
 				checkFunction(bus, device, function);
+				kprintf("function %x\n", function);
 			}
 		}
 	}

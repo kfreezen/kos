@@ -75,5 +75,6 @@ extern void irq15();
 
 extern void sys70();
 extern void isr71();
+extern void isr72();
 
 #endif

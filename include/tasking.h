@@ -12,6 +12,7 @@ typedef struct Task {
 	UInt32 eip; // 12
 	PageDirectory* dir; // 16
 	struct Task* next; // 20
+	int sleepTill; // 24:  The tick amount to sleep until.
 } Task;
 
 void InitTasking();

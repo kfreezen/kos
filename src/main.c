@@ -90,16 +90,13 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 
 	Screen_Init();
 
-	FloppyInit();
+	//FloppyInit();
 	
 	kprintf("Scanning PCI Devices... ");
 	checkAllBuses();
 	kprintf("[ok]\n");
 	
 	DumpPCIDeviceData();
-	
-	ATA_Init();
-	//ATA_EnumerateDevices();
 
 	/*kprintf("Keyboard Init... ");
 	KB_Init(0);
@@ -115,6 +112,7 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 
 	kprintf("kOS v0.6.12\n");
 
+	/*
 	//kprintf("kprintf symbol = %x\n", getKernelSymbol("kprintf"));
 	File* initScript = GetFileFromPath("/sys/init.script");
 	FileSeek(0, initScript); // Due to these being global objects, we have to do such ugly things as this.
@@ -189,6 +187,12 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	doItPtr();*/
 
 	kprintf("Kernel init done...\n");
+
+	while(1) {
+		TaskSleep(1000);
+		kprintf("thread wake\n");
+	}
+
 	return 0;
 }
 
