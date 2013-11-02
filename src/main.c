@@ -91,6 +91,7 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	Screen_Init();
 
 	//FloppyInit();
+	ATA_Init();
 	
 	kprintf("Scanning PCI Devices... ");
 	checkAllBuses();
@@ -110,7 +111,7 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 
 	//Cls();
 
-	kprintf("kOS v0.6.12\n");
+	kprintf("kOS v0.6.13\n");
 
 	/*
 	//kprintf("kprintf symbol = %x\n", getKernelSymbol("kprintf"));
@@ -175,22 +176,12 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 
 	CloseFile(initScript);
 	kfree(lineBuf);
-
-	/*File* file = GetFileFromPath("/sys/hw_module");
-	int fileLength = FileSeek(SEEK_EOF, file);
-	FileSeek(0, file);
-
-	void* exe = kalloc(fileLength);
-	ReadFile(exe, fileLength, file);
-	ELF* elf = LoadKernelDriver(exe);
-	void (*doItPtr)() = elf->start;
-	doItPtr();*/
+	*/
 
 	kprintf("Kernel init done...\n");
 
 	while(1) {
-		TaskSleep(1000);
-		kprintf("thread wake\n");
+
 	}
 
 	return 0;

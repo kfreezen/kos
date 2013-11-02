@@ -3,6 +3,7 @@
 #include <kheap.h>
 #include <print.h>
 #include <isr.h>
+#include <pit.h>
 
 //#define TASKING_DEBUG
 
@@ -20,7 +21,11 @@ extern UInt32 new_task_entry; // Not to be referenced as such.  Is a symbol in _
 
 extern void idleProcess();
 
-void thread_switch(Registers* regs) {
+inline void ThreadYield() {
+	asm volatile("int $72");
+}
+
+void thread_switch(Registers regs) {
 	TaskSwitch();
 }
 
@@ -39,7 +44,7 @@ void InitTasking() {
 	
 	asm volatile("sti");
 
-	// Setting up our idle task.
+	/*// Setting up our idle task.
 	current_task->next->next = (Task*) kalloc(sizeof(Task));
 	current_task->next->eip = (UInt32) idleProcess;
 	current_task->next->esp = (UInt32) kalloc(256) + 252;
@@ -49,7 +54,7 @@ void InitTasking() {
 	current_task->next->id = next_pid++;
 
 	// We need to set up the idle process's stack as if returning from an interrupt.
-	setupStack(current_task->next->esp);
+	setupStack(current_task->next->esp);*/
 
 	registerIntHandler(72, thread_switch);
 }
@@ -57,6 +62,9 @@ void InitTasking() {
 extern void TaskSwitch();
 
 extern int mstime;
+
+void TaskSleepTicks(int ticks);
+
 void TaskSleep(int ms) {
 	TaskSleepTicks(ms / mstime);
 }

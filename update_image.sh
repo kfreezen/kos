@@ -1,6 +1,6 @@
 #!/bin/bash
 
-wc -l `find src -mindepth 1 -maxdepth 3 -name "*.s"` `find src -mindepth 1 -maxdepth 3 -name "*.c"` `find include -mindepth 1 -maxdepth 3 -name "*.h"`
+#wc -l `find src -mindepth 1 -maxdepth 3 -name "*.s"` `find src -mindepth 1 -maxdepth 3 -name "*.c"` `find include -mindepth 1 -maxdepth 3 -name "*.h"`
 
 sudo mount /dev/loop0 /media/loop0
 
@@ -21,4 +21,4 @@ sudo cp drivers/*.ko /media/loop0/drivers/
 sleep 0.25s
 sudo umount /media/loop0
 
-sudo qemu-system-x86_64 -soundhw sb16 -vga std -fda /dev/loop0 -monitor stdio
+qemu-system-x86_64 -usb -usbdevice mouse -soundhw sb16 -vga std -hda hdd.img -monitor stdio

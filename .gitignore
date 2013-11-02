@@ -10,4 +10,4 @@ kernel
 initrd.img
 grub_disk.img
 make-initrd.c
-
+hdd.img

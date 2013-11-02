@@ -163,7 +163,7 @@ static void kb_callback(Registers regs) {
 #define KEYBOARD_DEV_NAME "keyboard"
 
 int KB_Init() {
-	kprintf("ss %x\n", shift_state);
+	kprintf("ss %x, %x\n", shift_state, &shift_state);
 
 	File* file = GetFileFromPath("/sys/kbmaps.dat");
 
