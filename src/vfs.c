@@ -6,9 +6,13 @@
 //#define VFS_DEBUG
 
 VFS_Node* vfsRoot = NULL;
-UInt32 vfsId = 0;
+UInt64 vfsId = 0;
 
-inline UInt32 VFS_GetID() {
+inline UInt64 VFS_GetID() {
+	return vfsId++;
+}
+
+inline UInt64 GetInode() {
 	return vfsId++;
 }
 
@@ -41,8 +45,6 @@ VFS_Node* VFS_AddFile(int fileType, const char* name, VFS_Node* parent) {
 		}
 
 		ALAdd(dir->files, node);
-
-		node->id = (void*) VFS_GetID();
 		
 		return node;
 	} else {
@@ -102,7 +104,7 @@ ArrayList* VFS_ListFiles(VFS_Node* node) {
 void VFS_Init() {
 	vfsRoot = kalloc(sizeof(VFS_Node));
 	memset(vfsRoot, 0, sizeof(VFS_Node));
-	vfsRoot->id = (void*) VFS_GetID();
+	vfsRoot->inode = GetInode();
 	vfsRoot->parent = NULL;
 	vfsRoot->fileType = FILE_DIRECTORY | MOUNTPOINT;
 
@@ -154,7 +156,9 @@ int CreateMountPoint(VFS_Node* node, void* data,
 
 VFS_Node* AddFile(int fileType, const char* name, VFS_Node* parent) {
 	if(parent && parent->addfile) {
-		return parent->addfile(fileType, name, parent);
+		VFS_Node* node = parent->addfile(fileType, name, parent);
+		node->inode = GetInode();
+		return node;
 	} else {
 		kprintf("addfile null");
 		return NULL;
@@ -340,6 +344,10 @@ File* GetFileFromNode(VFS_Node* node) {
 	file->filePos = 0;
 
 	return file;
+}
+
+UInt64 GetInodeFromNode(VFS_Node* node) {
+	return node->inode;
 }
 
 void CloseFile(File* f) {

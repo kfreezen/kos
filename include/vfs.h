@@ -88,7 +88,8 @@ struct File;
 
 typedef struct VFS_Node {
 	int fileType;
-	void* id;
+	//void* id;
+	UInt64 inode;
 	char name[NAME_LENGTH]; // XXX:  Pointer or fixed length?
 	struct VFS_Node* parent;
 	void* data;
@@ -101,8 +102,8 @@ typedef struct VFS_Node {
 	struct VFS_Node* (*getnode)(struct VFS_Node*, const char*);
 	int (*write)(const void* buf, int len, struct File* node);
 	int (*read)(void* buf, int len, struct File* node);
-	int (*seek)(int newPos, struct File* node);
-	int (*tell)(struct File* node);
+	filePosType (*seek)(int newPos, struct File* node);
+	filePosType (*tell)(struct File* node);
 } VFS_Node;
 
 typedef struct File {
@@ -156,7 +157,10 @@ int fgetline(File* file, char* buf, int maxlen, char end);
 File* GetFileFromPath(const char* path);
 
 VFS_Node* GetNodeFromFile(File* file);
-File* GetFileFromNode(VFS_Node* node);
+
+File* GetFileFromNode(VFS_Node* node); // Would be better called CreateFileWithNode()
+
+UInt64 GetInodeFromNode(VFS_Node* node);
 
 #define SEEK_EOF 0x7FFFFFFF
 #endif

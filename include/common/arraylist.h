@@ -27,6 +27,7 @@ UInt32 ALGetInt(ArrayList* list, int idx);
 ArrayList* ALCopy(ArrayList* list);
 
 int ALAdd(ArrayList* list, void* value);
+void ALRemove(ArrayList* list, int idx);
 
 void expand(ArrayList* list);
 void contract(ArrayList* list);
@@ -39,6 +40,8 @@ void ALFreeItr(ALIterator* itr);
 void ALFreeList(ArrayList* list);
 void ALClear(ArrayList* list, int doFreePointers);
 void ALFreePointers(ArrayList* list);
+
+int ALItrGetIndex(ALIterator* itr);
 
 #define ALFreeIterator(a) ALFreeItr(a)
 #endif

@@ -4,7 +4,7 @@
 
 sudo mount /dev/loop0 /media/loop0
 
-./make-initrd
+./make-initrd `cat initrd-files`
 
 nm kernel | grep -f kernel.sym | ./tmtb > kernel.map
 

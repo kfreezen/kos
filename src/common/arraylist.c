@@ -136,6 +136,10 @@ void ALItrReset(ALIterator* itr) {
 	itr->nextIdx = 0;
 }
 
+int ALItrGetIndex(ALIterator* itr) {
+	return itr->idx;
+}
+
 Bool ALItrHasNext(ALIterator* itr) {
 	//void** listData = (void**) itr->list->listData;
 	int i = itr->idx;

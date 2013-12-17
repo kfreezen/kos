@@ -1,3 +1,2 @@
-oskrnl.bin oskrnl.bin
-test1.txt test1.txt
+drivers/keyboard.ko keyboard.ko
 kbmaps.dat kbmaps.dat

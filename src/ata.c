@@ -19,6 +19,8 @@ UInt32 secondary_dev_ctrl;
 
 UInt32 last_drive_selected[MAX_BUSES];
 
+IdentifyStruct* driveInfo[MAX_BUSES][2]; // [bus][drive]
+
 enum ATA_PORTS {
 	DATA, ERROR, SECTOR_COUNT, LBA_LO, LBA_MID, LBA_HI, DRIVE, COMMAND
 };
@@ -179,7 +181,6 @@ int ATA_Identify(IdentifyStruct* ident, int busSelect, int drive) {
 	}
 	//IdentifyStruct* ident = kalloc(sizeof(IdentifyStruct));
 
-	kprintf("sizeof = %x\n", sizeof(IdentifyStruct));
 	int i;
 	for(i=0; i<(sizeof(IdentifyStruct)/2); i++) {
 		buffer[i] = ATA_ReadPort16(busSelect, DATA);
@@ -226,10 +227,12 @@ int ATA_Read(int busSelect, int drive, UInt64 lba, int sectorCount, void* buffer
 	ATA_WritePort8(busSelect, LBA_MID, lbaBytes[1]);
 	ATA_WritePort8(busSelect, LBA_LO, lbaBytes[0]);
 
-	ATA_WritePort8(busSelect, READ_SECTORS_EXT);
+	ATA_WritePort8(busSelect, COMMAND, READ_SECTORS_EXT);
 
+	int bufferItr = 0;
+	UInt16* buf = (UInt16*) buffer;
 	int i;
-	for(i=0; i < sectorCount; i++) {}
+	for(i=0; i < sectorCount; i++) {
 		ATA_WaitIRQ(busSelect, drive);
 
 		kprintf("ATA_Read IRQ done\n");
@@ -237,9 +240,8 @@ int ATA_Read(int busSelect, int drive, UInt64 lba, int sectorCount, void* buffer
 		ATA_ClearIrqTriggered(busSelect, drive);
 
 		// Read stuff into buffer.
-		int j;
-		for(j=0; j<256; j++) {
-			ATA_ReadPort16(busSelect, DATA);
+		for(; bufferItr<256; bufferItr++) {
+			buf[bufferItr] = ATA_ReadPort16(busSelect, DATA);
 		}
 	}
 
@@ -247,6 +249,11 @@ int ATA_Read(int busSelect, int drive, UInt64 lba, int sectorCount, void* buffer
 }
 
 void ATA_Init() {
+	// TODO:  Add ATA controller detection code.
+
+	// TODO:  Make sure that buses are available and assign
+	// port bases as such.
+
 	portBase[PRIMARY_BUS] = PRIMARY_BUS_PORT_BASE;
 	portBase[SECONDARY_BUS] = SECONDARY_BUS_PORT_BASE;
 	devCtrl[PRIMARY_BUS] = PRIMARY_DEV_CTRL_PORT;
@@ -254,14 +261,25 @@ void ATA_Init() {
 
 	registerIntHandler(IRQ(14), ATA_IrqHandler);
 
-	IdentifyStruct* ident;
-	ident = kalloc(sizeof(IdentifyStruct));
+	int busItr;
+	int driveItr;
+	for(busItr = 0; busItr < MAX_BUSES; busItr++) {
+		for(driveItr = 0; driveItr < 2; driveItr++) {
+			IdentifyStruct* ident = kalloc(sizeof(IdentifyStruct));
 
-	int status = ATA_Identify(ident, PRIMARY_BUS, 0);
-
-	if(status == 0) {
-		kprintf("lba48 = %d\n", ident->maxLBA48Address);
-	} else {
-		kprintf("status %d\n", status);
+			int status = ATA_Identify(ident, busItr, driveItr);
+			if(status == 0) {
+				driveInfo[busItr][driveItr] = ident;
+			} else {
+				kfree(ident);
+				driveInfo[busItr][driveItr] = NULL;
+			}
+		}
 	}
+
+	// TODO:  Implement a block device abstraction layer.
+
+	UInt8* buffer = kalloc(1024);
+	ATA_Read(PRIMARY_BUS, 0, 0, 1, buffer);
+	kprintf("%x\n", buffer);
 }

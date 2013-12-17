@@ -45,8 +45,6 @@ VFS_Node* DevFS_AddFile(int fileType, const char* name, VFS_Node* parent) {
 		node->tell = parent->tell;
 	}
 
-	node->id = GetDevFSId();
-
 	DirectoryData* dir = (DirectoryData*) parent->data;
 	ALAdd(dir->files, node);
 

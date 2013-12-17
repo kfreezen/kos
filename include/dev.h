@@ -14,6 +14,10 @@ typedef struct {
 
 	write_func write;
 	read_func read;
+
+	// These two are not strictly necessary.  They were added for block device support.
+	seek_func seek;
+	tell_func tell;
 } DeviceData;
 
 int DevFS_Init();

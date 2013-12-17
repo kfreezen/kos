@@ -92,7 +92,7 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 
 	//FloppyInit();
 	ATA_Init();
-	
+
 	kprintf("Scanning PCI Devices... ");
 	checkAllBuses();
 	kprintf("[ok]\n");
@@ -180,8 +180,9 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 
 	kprintf("Kernel init done...\n");
 
+	// Kernel main logic loop
 	while(1) {
-
+		asm volatile("hlt");
 	}
 
 	return 0;

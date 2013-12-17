@@ -1,0 +1,30 @@
+src/ordered_array.c:		// TODO:  Implement kernel error interrupt.  for now, freeze.
+src/vfs.c:			// TODO:  Implement file maniplation stuff.
+src/vfs.c:			if(!strcmp(node->name, name)) { // XXX Should probably use strncmp
+src/vfs.c:				ret = node; // XXX Should we give a copy of the object?
+src/isr.c:// TODO:  Create some kind of queue for the kernel to get rid of the left over stuff from the task in its spare time, so as to prevent lagging when a task is closed.
+src/cli/screenapi.c:int CLI_Init() { // TODO:  Figure out a way in which to find the width and height
+src/ata.c:	// TODO:  Implement IRQ sharing stuff.
+src/ata.c:		// FIXME
+src/ata.c:	// TODO:  We need to cache an IdentifyStruct
+src/ata.c:	// TODO:  Add ATA controller detection code.
+src/ata.c:	// TODO:  Make sure that buses are available and assign
+src/ata.c:	// TODO:  Implement a block device abstraction layer.
+src/kheap.c:			// TODO: Throw major error, go crazy.
+src/kheap.c:				// FIXME I don't like having to use two magics. this code should work without using two magics.
+src/kheap.c:// FIXME  There is another function that is accessing unpaged memory after this is called.
+src/paging.c:	// so we can mark the memory holes as used. TODO Obtain a memory map and use it to mark physical pages as used if
+src/fat12.c:// TODO:  Use a caching system similar to this in the floppy driver.
+src/fat12.c:// TODO:  When FAT12_Read_LL is improved, make sure this function is changed to take 'length' at face value.
+src/fat12.c:// TODO:  Create a VFS tell function to tell us (lol) where the file position is.
+src/disasm.c:			// FIXME:  This needs some major reworking.
+src/dev.c:			if(!strcmp(node->name, name)) { // XXX Should probably use strncmp
+src/dev.c:				ret = node; // XXX Should we give a copy of the object?
+src/elf.c:			// TODO:  Figure out what to do with this.  The one that is null (at least in my helloworld) is GNU_STACK
+src/elf.c:		// TODO: FINISH
+src/process.s:	; TODO Figure out how to create a struct in nasm assembly code.
+drivers/keyboard.c:	// TODO:  Move the options into the file struct.
+include/fat12.h:#define FILE_ATTR_LONG_FILE_NAME 0xF // FIXME:  Get rid of all instances of this, then delete.  Use FAT12_LONG_FILENAME
+include/block_dev.h:// TODO:  Add support for an inode in the VFS structures, so that two identically named files can be told apart.
+include/vfs.h:	char name[NAME_LENGTH]; // XXX:  Pointer or fixed length?
+include/isr.h:// TODO:  Simplify SYSCALL_CONSOLE and take out the PUTHEX and PUTDEC

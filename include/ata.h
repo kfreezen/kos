@@ -22,6 +22,7 @@
 #define LBA_BITNUM 6
 #define DEV_BITNUM 4
 
+#define READ_SECTORS_EXT 0x24
 #define IDENTIFY 0xEC
 
 #define NOT_PROPER_DRIVE -1
