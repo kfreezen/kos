@@ -82,7 +82,7 @@ UInt16 FAT12_GetClusterFromFAT(FAT12_Context* context, int prevCluster) {
 
 	int fatSector = bpb->reservedSectorsNum+(fatOffset/bpb->bytesPerSector);
 	
-	#ifdef FAT12_DEBUG
+	#ifdef FAT12_DEBUG_VERBOSE
 	kprintf("fatSector = %x, fatOffset = %x, prevCluster=%x\n", fatSector, fatOffset, prevCluster);
 	#endif
 
@@ -105,7 +105,7 @@ UInt16 FAT12_GetClusterFromFAT(FAT12_Context* context, int prevCluster) {
 		table_value = table_value & 0x0FFF;
 	}
 	
-	#ifdef FAT12_DEBUG
+	#ifdef FAT12_DEBUG_VERBOSE
 	kprintf("table_value=%x\n", table_value);
 	#endif
 
@@ -497,7 +497,7 @@ ArrayList* FAT12_ListFiles(VFS_Node* dir) {
 	if(dir == NULL) {
 		return NULL;
 	}
-
+	
 	LoadDirectory(dir);
 
 	FAT12_File* dirData = (FAT12_File*) dir->data;
@@ -527,10 +527,17 @@ VFS_Node* FAT12_GetNode(VFS_Node* dir, const char* name) {
 	FAT12_File* dirData = (FAT12_File*) dir->data;
 
 	ArrayList* TYPE(VFS_Node*) files = (ArrayList*) dirData->data;
+	
+	kprintf("files: %x\n", files);
+
 	ALIterator* itr = ALGetItr(files);
 
 	while(ALItrHasNext(itr)) {
 		VFS_Node* node = ALItrNext(itr);
+
+		#ifdef FAT12_DEBUG
+		kprintf("\"%s\": \"%s\"\n", name, node->name);
+		#endif
 
 		if(!strcmp(name, node->name)) {
 			return node;
@@ -585,6 +592,10 @@ VFS_Node* FAT12_AddFile(int fileType, const char* name, VFS_Node* parent) {
 
 #define LFNAME_MAX 256
 int FAT12_LoadDirectory(VFS_Node* node) {
+	#ifdef FAT12_DEBUG
+	kprintf("F12_LD(%x)\n", node);
+	#endif
+
 	if(node->options.flags & NOT_STALE) {
 		return 0;
 	}
@@ -610,11 +621,6 @@ int FAT12_LoadDirectory(VFS_Node* node) {
 	}
 
 	ArrayList* TYPE(VFS_Node*) dirFiles = (ArrayList*)dir->data;
-	// Clear our list.
-	/*ALFreeList((ArrayList*)dir->data);
-	
-	ArrayList* TYPE(VFS_Node*) dirFiles = ALCreate();
-	dir->data = dirFiles;*/
 
 	Bpb* bpb = dir->context->bpb;
 
@@ -805,12 +811,16 @@ int FAT12_LoadDirectory(VFS_Node* node) {
 
 			VFS_Node* file;
 
+			// If we didn't find the file already in the directory representation, add it.
 			if(!foundFile) {
 				file = AddFile(fileType, name, node);
 			}
 
 			if(file != NULL && !foundFile) {
-
+				#ifdef FAT12_DEBUG
+				kprintf("new file %s\n", file->name);
+				#endif
+				
 				// Set up our FAT12_File
 				FAT12_File* fileData = (FAT12_File*) file->data;
 				fileData->locationData = kalloc(sizeof(DirEntry));

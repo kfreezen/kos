@@ -150,6 +150,9 @@ int CreateTask(UInt32 start, PageDirectory* dir) {
 	newTask->dir = dir;
 	newTask->next = 0;
 	
+	newTask->processInfo = kalloc(sizeof(ProcessInfo));
+	newTask->processInfo->files = ALCreate();
+	
 	#ifdef TASKING_DEBUG
 	kprintf("CreateTask.waypoint1:eip=%x\n", newTask->eip);
 	#endif

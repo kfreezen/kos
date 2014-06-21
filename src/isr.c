@@ -9,6 +9,7 @@
 #include <driver_interface.h>
 
 #include <isr.h>
+#include <vfs.h>
 
 #define BSOD_ATTR 0x1F
 
@@ -172,21 +173,64 @@ static void null_kb_handler(Registers regs) {
 
 }
 
-static void syscall_console(Registers* regs) {
-	switch(regs->ebx) {
-		case CONSOLE_PUTS:
-			PutString((char*)regs->ecx);
-			break;
-		case CONSOLE_PUTCH:
-			PutChar(regs->ecx);
-			break;
-		case CONSOLE_PUTHEX:
-			PutHex(regs->ecx);
-			break;
-		case CONSOLE_PUTDEC:
-			PutDec(regs->ecx);
-			break;
+extern Task* current_task;
+
+static void syscall_open(Registers* regs) {
+	// ebx = file to open.
+	// ecx = reserved
+	// edx = reserved
+	
+	// Return in eax.
+
+	// Make sure our unscrupulous user doesn't do a bad thing and try to read from NULL memory.
+	if(regs->ebx == NULL) {
+		regs->eax = INVALID_FILEDESCRIPTOR;
+		return;
 	}
+
+	File* f = GetFileFromPath((char*) regs->ebx);
+
+	if(f == NULL) {
+		// Failed to open file for whatever reason.
+		// This is where it'd be handy to have an errno. TODO
+		regs->eax = INVALID_FILEDESCRIPTOR;
+		return;
+	}
+
+	int fd = ALAdd(current_task->processInfo->files, (void*) f);
+
+	regs->eax = fd;
+}
+
+static void syscall_write(Registers* regs) {
+	// ebx = file descriptor.
+	// ecx = buffer to write to file.
+	// edx = length of buffer to write.
+	
+	// Returns status in eax.
+
+	// These should probably be register vars.
+	int fd = regs->ebx;
+	void* buf = (void*) regs->ecx;
+	int len = regs->edx;
+
+	if(fd < 0) {
+		regs->eax = -1;
+		return;
+	}
+
+	if(buf == NULL) {
+		regs->eax = -1;
+		return;
+	}
+
+	if(len < 0) {
+		regs->eax = -1;
+		return;
+	}
+
+	File* f = (File*) ALGetPtr(current_task->processInfo->files, regs->ebx);
+	regs->eax = WriteFile(buf, len, f);
 }
 
 static void syscall_task(Registers* regs) {
@@ -274,9 +318,10 @@ int ISR_Init() {
 	registerIntHandler(71, driver_interface_handler);
 
 	registerSyscall(SYSCALL_EXIT, syscall_exit);
-	registerSyscall(SYSCALL_CONSOLE, syscall_console);
 	registerSyscall(SYSCALL_TASK, syscall_task);
-	
+	registerSyscall(SYSCALL_OPEN, syscall_open);
+	registerSyscall(SYSCALL_WRITE, syscall_write);
+
 	isr_isInit = true;
 	return 0;
 }

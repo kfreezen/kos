@@ -125,7 +125,7 @@ int CreateMountPoint(VFS_Node* node, void* data,
 		seek_func seek, tell_func tell
 		) {
 	#ifdef VFS_DEBUG
-	kprintf("CreateMountPoint(%x, %x, %x, %x, %x, %x, %x, %x);", node, data, addfile, dirload,
+	kprintf("CreateMountPoint(%x, %x, %x, %x, %x, %x, %x, %x);\n", node, data, addfile, dirload,
 		getnode, listfiles, write, read
 	);
 	#endif
@@ -175,13 +175,19 @@ ArrayList* ListFiles(VFS_Node* dir) {
 
 VFS_Node* GetNode(VFS_Node* node, const char* name) {
 	#ifdef VFS_DEBUG
-	kprintf("GetNode(%x, %s)\n", node, name);
+	kprintf("GetNode(%x, %s) ", node, name);
 	#endif
 
 	if(node!=NULL && node->getnode) {
+		#ifndef VFS_DEBUG
 		return node->getnode(node, name);
+		#else
+		VFS_Node* returnedNode = node->getnode(node, name);
+		kprintf("returnedNode = %x\n", returnedNode);
+		return returnedNode;
+		#endif
 	} else {
-		kprintf("VFS_GetNode:  node or node->getnode is NULL.  node=%x, node->getnode=%x\n", node, node->getnode);
+		kprintf("VFS_GetNode:  node or node->getnode is NULL.  node=%x, node->getnode=%x\n", node, (node) ? node->getnode : NULL);
 		return NULL;
 	}
 }
@@ -208,18 +214,18 @@ File* GetFileFromPath(const char* path) {
 	while(tok != NULL) {
 		if(strlen(tok) == 0) {
 			// Let's just continue, in case there is more to the string.
-			continue;
+			//continue;
 		} else {
 			VFS_Node* newNode = GetNode(node, tok);
+
+			#ifdef VFS_DEBUG
+			kprintf("tok=%s\n", tok);
+			#endif
 
 			if(newNode == NULL) {
 				// Doesn't exist, so return NULL.
 				return NULL;
 			}
-			
-			#ifdef VFS_DEBUG
-			kprintf("tok=%s\n", tok);
-			#endif
 
 			if(!isdir(newNode)) {
 				#ifdef VFS_DEBUG
@@ -283,16 +289,17 @@ int fgetline(File* file, char* buf, int maxlen, char end) {
 }
 
 int ReadFile(void* buf, int len, File* file) {
+	if(!file) {
+		kprintf("readfile:file==NULL\n");
+		return -1;
+	}
+
 	#ifdef VFS_DEBUG
 	kprintf("file->node=%x, file->node->read=%x, file->node->name=%s\n", file->node, file->node->read, file->node->name);
 	#endif
 
 	if(file && file->node && file->node->read) {
 		return file->node->read(buf, len, file);
-	}
-
-	if(!file) {
-		kprintf("readfile:file==NULL\n");
 	}
 
 	return -1;

@@ -6,6 +6,10 @@
 
 struct Task;
 
+typedef struct ProcessInfo {
+	ArrayList TYPE(File*)* files;
+} ProcessInfo;
+
 typedef struct Task {
 	int id; // 0
 	UInt32 esp, ebp; // 4-11
@@ -13,6 +17,7 @@ typedef struct Task {
 	PageDirectory* dir; // 16
 	struct Task* next; // 20
 	int sleepTill; // 24:  The tick amount to sleep until.
+	ProcessInfo* processInfo; // 28: The process info.  This includes open file descriptors.
 } Task;
 
 void InitTasking();

@@ -22,7 +22,7 @@ typedef struct {
 	blockdevice_getblocksnum_t bd_getblocksnum;
 	blockdevice_getblocksize_t bd_getblocksize;
 
-	const char* name;
+	char* name;
 	int driveId;
 } BlockDeviceData;
 
@@ -74,5 +74,12 @@ struct BlockDeviceResponseHeader {
 typedef struct BlockDeviceResponseHeader BlockDeviceResponseHeader;
 
 int RegisterBlockDevice(BlockDeviceData* dev);
+
+
+// For now it's just /dev/null stuff.
+int BlockDevice_Write(const void* buf, int len, File* file);
+int BlockDevice_Read(void* buf, int len, File* file);
+filePosType BlockDevice_Seek(filePosType newPos, File* file);
+filePosType BlockDevice_Tell(File* node);
 
 #endif

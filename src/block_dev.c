@@ -12,7 +12,7 @@ int RegisterBlockDevice(BlockDeviceData* blockDev) {
 	BlockDeviceData* newDev = kalloc(sizeof(BlockDeviceData)); // We don't want some stupid (or malicious) programmer
 	// coming along and freeing our essential device data and causing havoc to the system.
 
-	memcpy(newDev, dev, sizeof(BlockDeviceData));
+	memcpy(newDev, blockDev, sizeof(BlockDeviceData));
 	newDev->name = kalloc(strlen(blockDev->name) + 1);
 	strcpy(newDev->name, blockDev->name);
 
@@ -27,7 +27,7 @@ int RegisterBlockDevice(BlockDeviceData* blockDev) {
 
 	VFS_Node* node = RegisterDevice(&dev);
 
-	Dict_SetByHash(blockDevices, GetInodeFromNode(), newDev);
+	Dict_SetByHash(blockDevices, GetInodeFromNode(node), newDev);
 
 }
 
@@ -47,7 +47,7 @@ filePosType BlockDevice_Seek(filePosType newPos, File* file) {
 	// That can't really be good, can it?
 
 	UInt64 inode = GetInodeFromNode(GetNodeFromFile(file));
-	BlockDeviceData* data = (BlockDeviceData*) Dict_GetFromHash(blockDevices, inode);
+	BlockDeviceData* data = (BlockDeviceData*) Dict_GetByHash(blockDevices, inode);
 	UInt64 blocks = data->bd_getblocksnum(data->driveId);
 	UInt64 blockSize = data->bd_getblocksize(data->driveId);
 

@@ -38,6 +38,7 @@ Bool ALItrHasNext(ALIterator* itr);
 void* ALItrNext(ALIterator* itr);
 void ALFreeItr(ALIterator* itr);
 void ALFreeList(ArrayList* list);
+
 void ALClear(ArrayList* list, int doFreePointers);
 void ALFreePointers(ArrayList* list);
 

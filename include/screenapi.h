@@ -15,7 +15,7 @@
 #define DEFAULT_COLOR_ATTRIBUTE 0x07
 #define SCREEN_DEV_NAME "screen"
 
-#define SCREEN_WRITE_ESCAPE -1
+#define SCREEN_WRITE_ESCAPE '\e'
 #define CMD_CLEARSCREEN 0x00
 #define CMD_MOVE 0x01
 

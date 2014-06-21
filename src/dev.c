@@ -83,6 +83,16 @@ VFS_Node* DevFS_GetNode(VFS_Node* node, const char* name) {
 	}
 }
 
+ArrayList* DevFS_ListFiles(VFS_Node* node) {
+	if(isdir(node)) {
+		DirectoryData* dir = (DirectoryData*) node->data;
+		ArrayList* TYPE(VFS_Node*) retList = ALCopy((ArrayList*)dir->files);
+		return retList;
+	} else {
+		return NULL;
+	}
+}
+
 int DevFS_Init() {
 	if(devfsRoot != NULL) {
 		return 0;
@@ -93,7 +103,7 @@ int DevFS_Init() {
 	
 	CreateMountPoint(devMount, NULL, 
 		DevFS_AddFile, NULL,
-		DevFS_GetNode, NULL,
+		DevFS_GetNode, DevFS_ListFiles,
 		NULL, NULL,
 		NULL, NULL
 	);

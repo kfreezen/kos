@@ -195,10 +195,6 @@ void ALFreePointers(ArrayList* list) {
 }
 
 void ALFreeList(ArrayList* list) {
-	// This is probably a slow solution, but it helps cure some
-	// of the memory leaks.
-	ALFreePointers(list);
-
 	kfree(list->allocatedListPtr);
 	Bitset_Free(list->bits);
 	kfree(list);

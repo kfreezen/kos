@@ -168,6 +168,7 @@ int KB_Init() {
 	File* file = GetFileFromPath("/sys/kbmaps.dat");
 
 	if(!file) {
+		kprintf("kbmaps.dat not found.\n");
 		return -1;
 	}
 
@@ -188,7 +189,7 @@ int KB_Init() {
 
 	nummaps = num;
 	if(length%sizeof(KB_Map)) {
-		kprintf("kbmaps.dat invalid");
+		kprintf("kbmaps.dat invalid\n");
 		return -1;
 	} else {
 		int i;

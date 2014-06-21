@@ -1,6 +1,5 @@
 //#define TEST
 
-#ifndef TEST
 #include <KOSTypes.h>
 
 #include <screenapi.h>
@@ -71,33 +70,42 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 	MultibootHeader* mboot_hdr = mboot; //kmalloc(sizeof(MultibootHeader));
 	//memcpy(mboot_hdr, mboot, sizeof(MultibootHeader));
 	
+	kprintf("Starting init...\n");
+
 	//new_start(stack, mboot_hdr);
 	GDT_Init();
 	IDT_Init();
 	ISR_Init();
 	asm volatile("sti");
 	
+	kprintf("Basics\t\t\t[OK]\n");
+
 	PIT_Init(PIT_MSTIME);
+
+	kprintf("PIT\t\t\t[OK]\n");
 
 	init_kheap();
 	InitPaging((mboot_hdr->mem_lower+mboot_hdr->mem_upper)&~3);
 	InitKernelHeap();
 
+	kprintf("Heap\t\t\t[OK]\n");
+
 	VFS_Init();
 	DevFS_Init();
 	
+	kprintf("VFS\t\t\t[OK]\n");
+
 	DriversInit();
+
+	kprintf("Drivers\t\t\t[OK]\n");
 
 	Screen_Init();
 
-	//FloppyInit();
-	ATA_Init();
+	FloppyInit();
 
-	kprintf("Scanning PCI Devices... ");
 	checkAllBuses();
-	kprintf("[ok]\n");
-	
 	DumpPCIDeviceData();
+	kprintf("PCI\t\t\t[OK]\n");
 
 	/*kprintf("Keyboard Init... ");
 	KB_Init(0);
@@ -113,7 +121,21 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 
 	kprintf("kOS v0.6.13\n");
 
-	/*
+	VFS_Node* rd = GetNodeFromFile(GetFileFromPath("/sys"));
+	kprintf("rd = %x\n", rd);
+	
+	ArrayList* list = ListFiles(rd);
+	ALIterator* itr = ALGetItr(list);
+
+	while(ALItrHasNext(itr)) {
+		VFS_Node* node = ALItrNext(itr);
+		kprintf("file: %s\n", node->name);
+	}
+
+	ALFreeItr(itr);
+	
+	ALFreeList(list);
+
 	//kprintf("kprintf symbol = %x\n", getKernelSymbol("kprintf"));
 	File* initScript = GetFileFromPath("/sys/init.script");
 	FileSeek(0, initScript); // Due to these being global objects, we have to do such ugly things as this.
@@ -176,9 +198,18 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 
 	CloseFile(initScript);
 	kfree(lineBuf);
-	*/
 
 	kprintf("Kernel init done...\n");
+
+	File* elf = GetFileFromPath("/sys/helloworld");
+	
+	FileSeek(SEEK_EOF, elf);
+	int length = FileTell(elf);
+	FileSeek(0, elf);
+	UInt8* elfBuf = kalloc(length);
+	ReadFile(elfBuf, length, elf);
+	ELF* elfExe = Parse_ELF(elfBuf);
+	CreateTaskFromELF(elfExe);
 
 	// Kernel main logic loop
 	while(1) {
@@ -187,5 +218,3 @@ int kmain(UInt32 initial_stack, MultibootHeader* mboot, UInt32 mboot_magic) {
 
 	return 0;
 }
-
-#endif

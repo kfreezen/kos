@@ -52,4 +52,8 @@ int ISR_Init();
 	#define KB_GETCH 0x1
 #define SYSCALL_TASK 0x3
 	#define TASK_GETPID 0x0
+#define SYSCALL_OPEN 0x4
+
+#define SYSCALL_WRITE 0x7
+
 #endif

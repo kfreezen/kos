@@ -131,7 +131,7 @@ int CLI_Init() { // TODO:  Figure out a way in which to find the width and heigh
 */
 
 int ScreenWrite(const void* _userBuf, int len, File* node) {
-	const char* userBuf = (const char*) _userBuf;
+	const unsigned char* userBuf = (const unsigned char*) _userBuf;
 	
 	// This one is refreshingly simple, we just loop through the userBuf
 	int start = 0;
@@ -144,6 +144,7 @@ int ScreenWrite(const void* _userBuf, int len, File* node) {
 
 	int i;
 	for(i=start; i<len; i++) {
+
 		if(userBuf[i] == SCREEN_WRITE_ESCAPE && doEscapes) {
 			switch(userBuf[++i]) {
 				case SCREEN_WRITE_ESCAPE: {
@@ -156,9 +157,10 @@ int ScreenWrite(const void* _userBuf, int len, File* node) {
 				} break;
 
 				case CMD_MOVE: {
-					short* coord = (short*) &userBuf[++i];
-					Move(coord[0], coord[1]);
-					i+=(sizeof(short)<<1) - 1;
+					// I have no clue why I wrote it like this.
+					char x = userBuf[++i];
+					char y = userBuf[++i];
+					Move(x, y);
 				} break;
 			}
 		} else {
@@ -226,7 +228,7 @@ int PrintChar(Char c) {
 		x = (x&0xFFFFFFF8) + 8;
 	} else {
 		vidmem[char_itr] = c;
-		//vidmem[char_itr+1] = color;
+		vidmem[char_itr+1] = color;
 		x++;
 	}
 	
@@ -305,9 +307,11 @@ void ClearScreen() {
 	Move(0,0);
 	
 	Int32 i;
-	for(i=0; i<maxCoor; i++) {
+	for(i = 0; i < maxCoor; i++) {
 		PrintChar(' ');
 	}
+
+	Move(0,0);
 }
 
 void SetLineColor(int line, UInt8 color) {
