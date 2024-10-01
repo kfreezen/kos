@@ -24,7 +24,7 @@ typedef struct __page_table {
 PageDirectoryEntry AssemblePDE(UInt32 pt, UInt32 flags);
 PageTableEntry AssemblePTE(void* page, UInt32 flags);
 
-inline Pointer getPhysAddr(PageDirectory* dir, Pointer virt);
+Pointer getPhysAddr(PageDirectory* dir, Pointer virt);
 
 void SwitchPageDirectory(PageDirectory* dir);
 

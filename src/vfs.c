@@ -341,7 +341,7 @@ int FileTell(File* file) {
 
 // We want to use this instead of f->node in our code, so we break
 // fewer things when the internal representation changes.
-static inline VFS_Node* GetNodeFromFile(File* f) {
+inline VFS_Node* GetNodeFromFile(File* f) {
 	return (f) ? f->node : NULL;
 }
 
