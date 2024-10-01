@@ -205,7 +205,7 @@ void PrintEffectiveAddress(Byte** _ptr, char** usedregs, int flags) {
 	*_ptr = ptr;
 }
 
-inline UInt32 uint_peek(void* ptr) {
+static inline UInt32 uint_peek(void* ptr) {
 	return *((UInt32*) ((UInt32)ptr));
 }
 

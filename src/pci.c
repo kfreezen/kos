@@ -55,27 +55,27 @@ UInt32 PCI_ReadConfigLong(PCIDevice* device, int func, int config_offset) {
 	
 }
 
-inline UInt16 getVendorID(UInt16 bus, UInt16 slot, UInt16 function) {
+static inline UInt16 getVendorID(UInt16 bus, UInt16 slot, UInt16 function) {
 	return pciConfigReadWord(bus, slot, function, 0)&0xFFFF;
 }
 
-inline UInt16 getHeaderType(UInt16 bus, UInt16 slot, UInt16 function ) {
+static inline UInt16 getHeaderType(UInt16 bus, UInt16 slot, UInt16 function ) {
 	return (pciConfigReadLong(bus, slot, function, 0xc))&0xFF;
 }
 
-inline UInt16 getBaseClass(UInt16 bus, UInt16 slot) {
+static inline UInt16 getBaseClass(UInt16 bus, UInt16 slot) {
 	return (pciConfigReadLong(bus, slot, 0, 0x8)>>24)&0xFF;
 }
 
-inline UInt16 getSubClass(UInt16 bus, UInt16 slot) {
+static inline UInt16 getSubClass(UInt16 bus, UInt16 slot) {
 	return (pciConfigReadLong(bus, slot, 0, 0x8)>>16)&0xFF;
 }
 
-inline UInt16 getSecondaryBus(UInt16 bus, UInt16 slot) {
+static inline UInt16 getSecondaryBus(UInt16 bus, UInt16 slot) {
 	return (pciConfigReadLong(bus, slot, 0, 0x18)>>8)&0xFF;
 }
 
-inline UInt16 getDeviceID(UInt16 bus, UInt16 slot, UInt16 function) {
+static inline UInt16 getDeviceID(UInt16 bus, UInt16 slot, UInt16 function) {
 	return pciConfigReadLong(bus, slot, function, 0)>>16;
 }
 

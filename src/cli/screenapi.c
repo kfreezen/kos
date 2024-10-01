@@ -19,9 +19,9 @@ int x, y;
 int screenWidth, screenHeight;
 UInt8 color;
 
-inline void SetError(Error e) { error = e; }
+static inline void SetError(Error e) { error = e; }
 
-inline Int32 Coor(int x, int y) {
+static inline Int32 Coor(int x, int y) {
 	return (x+(y*screenWidth));
 }
 
@@ -48,7 +48,7 @@ void SetColorAttribute(UInt8 c) {
 	color = c;
 }
 
-inline int TermCoor(Terminal rect, int x, int y) {
+static inline int TermCoor(Terminal rect, int x, int y) {
 	return Coor(rect.r.x, rect.r.y) + ((y*screenWidth)+x);
 }
 

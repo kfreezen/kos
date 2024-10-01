@@ -8,11 +8,11 @@
 VFS_Node* vfsRoot = NULL;
 UInt64 vfsId = 0;
 
-inline UInt64 VFS_GetID() {
+static inline UInt64 VFS_GetID() {
 	return vfsId++;
 }
 
-inline UInt64 GetInode() {
+static inline UInt64 GetInode() {
 	return vfsId++;
 }
 
@@ -341,7 +341,7 @@ int FileTell(File* file) {
 
 // We want to use this instead of f->node in our code, so we break
 // fewer things when the internal representation changes.
-inline VFS_Node* GetNodeFromFile(File* f) {
+static inline VFS_Node* GetNodeFromFile(File* f) {
 	return (f) ? f->node : NULL;
 }
 

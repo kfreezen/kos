@@ -44,7 +44,7 @@ enum CONTROL_REG_BITS {
 	// of the last LBA48 value sent to an IO port.
 };
 
-inline int validateBusSelect(int busSelect) {
+static inline int validateBusSelect(int busSelect) {
 	if(busSelect > SECONDARY_BUS) {
 		// We don't support third and fourth right now.
 		return SECONDARY_BUS;

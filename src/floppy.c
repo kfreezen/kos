@@ -277,7 +277,7 @@ void FDC_Specify(UInt32 steprate, UInt32 load, UInt32 unload, Bool dma) {
 	DO_CMD(FDC_Specify, data);
 }
 
-inline void FDC_WaitIRQ() {
+static inline void FDC_WaitIRQ() {
 	int tmo=30;
 	
 	while(!receivedIrq && tmo>=0) {

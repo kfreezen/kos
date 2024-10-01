@@ -5,7 +5,7 @@
 
 int screenFd = -1;
 
-inline void initLib() {
+static inline void initLib() {
 	if(screenFd == -1) {
 		screenFd = open("/dev/screen", O_WRITE);
 	}

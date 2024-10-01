@@ -3,7 +3,7 @@
 #define SCREEN_CLEAR 0x00
 #define SCREEN_MOVE 0x01
 
-inline void SetupBuf(unsigned char* buf) {
+static inline void SetupBuf(unsigned char* buf) {
 	buf[0] = 0xaa;
 	buf[1] = 0x55;
 	buf[2] = '\e';

@@ -21,7 +21,7 @@ extern UInt32 new_task_entry; // Not to be referenced as such.  Is a symbol in _
 
 extern void idleProcess();
 
-inline void ThreadYield() {
+static inline void ThreadYield() {
 	asm volatile("int $72");
 }
 

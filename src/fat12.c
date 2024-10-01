@@ -14,17 +14,17 @@ FAT12_Context* FAT12_Contexts[FAT12_CONTEXTS_NUM];
 int nextContextToAdd = 0;
 
 // This is where the root directory is stored.
-inline int getFirstDataSector(Bpb* bpb) {
+static inline int getFirstDataSector(Bpb* bpb) {
 	return bpb->reservedSectorsNum + (bpb->fatTables*bpb->numSectorsPerFat);
 }
 
 // This is the absolute cluster after the first data sector
-inline int getAbsoluteCluster(int relSector, Bpb* bpb) {
+static inline int getAbsoluteCluster(int relSector, Bpb* bpb) {
 	return relSector - 2 + getFirstDataSector(bpb);
 }
 
 // This is the LBA representation of the sector to be read or written for the specified relative sector LBA.
-inline int getAbsoluteSector(int relSector, Bpb* bpb) {
+static inline int getAbsoluteSector(int relSector, Bpb* bpb) {
 	return getAbsoluteCluster(relSector, bpb) + (bpb->directoryEntries*32/bpb->bytesPerSector);
 }
 // These inline functions here and their usages are confusing.
